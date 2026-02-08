@@ -150,20 +150,6 @@ const Dashboard = () => {
         </p>
       </div>
 
-      {/* TOTAL PATIENTS */}
-      <div
-        style={{
-          background: "white",
-          padding: 24,
-          borderRadius: 12,
-          marginBottom: 24,
-        }}
-      >
-        <h3 style={{ margin: 0, color: "#6b7280" }}>Total Patients</h3>
-        <p style={{ fontSize: 36, fontWeight: 700, margin: "10px 0 0" }}>
-          {totalPatients}
-        </p>
-      </div>
 
       {/* GRAPHS */}
       <div
@@ -173,8 +159,23 @@ const Dashboard = () => {
           gap: 20,
         }}
       >
+        <div
+          style={{
+            background: "white",
+            padding: 24,
+            borderRadius: 12,
+            marginBottom: 24,
+            height: "150px",
+            boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)"
+          }}
+        >
+          <h3 style={{ margin: 0, color: "#6b7280" }}>Total Patients</h3>
+          <p style={{ fontSize: 36, fontWeight: 700, margin: "10px 0 0" }}>
+            {totalPatients}
+          </p>
+        </div>
         {/* CITY GRAPH */}
-        <div style={{ background: "white", padding: 20, borderRadius: 12 }}>
+        <div style={{ background: "white", padding: 20, borderRadius: 12, boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)" }}>
           <h3>City-wise Reports</h3>
           <div style={{ height: 260 }}>
             <ResponsiveContainer width="100%" height="100%">
@@ -190,7 +191,7 @@ const Dashboard = () => {
         </div>
 
         {/* PIE CHART */}
-        <div style={{ background: "white", padding: 20, borderRadius: 12 }}>
+        <div style={{ background: "white", padding: 20, borderRadius: 12, boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)" }}>
           <h3>Test-wise Patient Distribution</h3>
 
           {loadingTests ? (
@@ -221,7 +222,46 @@ const Dashboard = () => {
             </div>
           )}
         </div>
+        </div>
 
+            {/* DOCTOR TABLE */}
+            <div
+              style={{
+                background: "white",
+                padding: 20,
+                borderRadius: 12,
+                marginTop: 24,
+              }}
+            >
+              <h3>Reference Doctors</h3>
+      
+              {loadingDoctors ? (
+                <p>Loading doctors...</p>
+              ) : doctorList.length === 0 ? (
+                <p>No doctor data available</p>
+              ) : (
+                <table className="reports-table">
+                  <thead>
+                    <tr>
+                      <th>Doctor Name</th>
+                      <th>Contact</th>
+                      <th>Total Patients</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {doctorList.map((doc, index) => (
+                      <tr key={index}>
+                        <td>{doc.doctorName}</td>
+                        <td>{doc.doctorContact}</td>
+                        <td style={{ fontWeight: "700", color: "#6366f1" }}>
+                          {doc.patientCount}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
         {/* WEEKLY GRAPH */}
         <div
           style={{
@@ -229,6 +269,7 @@ const Dashboard = () => {
             background: "white",
             padding: 20,
             borderRadius: 12,
+            boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)"
           }}
         >
           <h3>Weekly Reports</h3>
@@ -246,45 +287,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* DOCTOR TABLE */}
-      <div
-        style={{
-          background: "white",
-          padding: 20,
-          borderRadius: 12,
-          marginTop: 24,
-        }}
-      >
-        <h3>Reference Doctors</h3>
-
-        {loadingDoctors ? (
-          <p>Loading doctors...</p>
-        ) : doctorList.length === 0 ? (
-          <p>No doctor data available</p>
-        ) : (
-          <table className="reports-table">
-            <thead>
-              <tr>
-                <th>Doctor Name</th>
-                <th>Contact</th>
-                <th>Total Patients</th>
-              </tr>
-            </thead>
-            <tbody>
-              {doctorList.map((doc, index) => (
-                <tr key={index}>
-                  <td>{doc.doctorName}</td>
-                  <td>{doc.doctorContact}</td>
-                  <td style={{ fontWeight: "700", color: "#6366f1" }}>
-                    {doc.patientCount}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-    </div>
   );
 };
 
