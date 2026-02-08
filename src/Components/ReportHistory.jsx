@@ -1,100 +1,192 @@
-import React, { useMemo, useState } from "react";
-
-/* ---------------- STATIC DATA ---------------- */
-
-const patientsData = [
-  {
-    caseId: "CASE001",
-    name: "Rahul Sharma",
-    mobile: "9876543210",
-    reports: [
-      {
-        id: "R1",
-        date: "2024-12-01",
-        type: "Blood Test",
-        content: "Hemoglobin normal. WBC slightly high.",
-      },
-      {
-        id: "R2",
-        date: "2025-01-10",
-        type: "X-Ray",
-        content: "Chest X-Ray normal.",
-      },
-    ],
-  },
-  {
-    caseId: "CASE002",
-    name: "Priya Patel",
-    mobile: "9123456780",
-    reports: [
-      {
-        id: "R3",
-        date: "2025-01-05",
-        type: "MRI Scan",
-        content: "Minor disc bulge detected.",
-      },
-    ],
-  },
-];
-
-/* ---------------- COMPONENT ---------------- */
+import React, { useMemo, useState, useEffect } from "react";
+import { apiRequest } from "../reusable";
 
 const ReportHistory = () => {
+
   const [search, setSearch] = useState("");
+  const [patients, setPatients] = useState([]);
   const [selectedPatient, setSelectedPatient] = useState(null);
-  const [selectedReport, setSelectedReport] = useState(null);
+  const [selectedTest, setSelectedTest] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  /* ---------- Search Filter ---------- */
+  /* ================= PRINT FUNCTION ================= */
+
+  const handlePrint = () => {
+  const content = document.getElementById("report-print-area");
+
+  if (!content) return;
+
+  const printWindow = window.open("", "", "width=900,height=650");
+
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>Lab Report</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+          }
+          h2, h3, p {
+            margin: 4px 0;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+          }
+          th, td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: left;
+          }
+          hr {
+            margin: 10px 0;
+          }
+        </style>
+      </head>
+      <body>
+        ${content.innerHTML}
+      </body>
+    </html>
+  `);
+
+  printWindow.document.close();
+  printWindow.focus();
+
+  setTimeout(() => {
+    printWindow.print();
+    printWindow.close();
+  }, 500);
+};
+
+
+  /* ================= FETCH REPORTS ================= */
+
+  useEffect(() => {
+    fetchReports();
+  }, []);
+
+  const fetchReports = async () => {
+    try {
+      setLoading(true);
+
+      const res = await apiRequest("get", "/api/report");
+      const data = res?.data || [];
+
+      const grouped = {};
+
+      data.forEach((item) => {
+        const p = item.patientDetails;
+
+        if (!grouped[p.patientId]) {
+          grouped[p.patientId] = {
+            patientId: p.patientId,
+            name: p.patientName,
+            mobile: p.mobileNumber,
+            referredBy: p.referredBy,
+            tests: []
+          };
+        }
+
+        Object.keys(item.testReport).forEach((testName) => {
+          grouped[p.patientId].tests.push({
+            testName,
+            reportData: item.testReport[testName],
+            createdAt: item.createdAt
+          });
+        });
+      });
+
+      setPatients(Object.values(grouped));
+
+    } catch (err) {
+      console.error("Failed to fetch reports", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* ================= SEARCH ================= */
+
   const filteredPatients = useMemo(() => {
-    if (!search) return patientsData;
+    if (!search) return patients;
+
     const q = search.toLowerCase();
-    return patientsData.filter(
+
+    return patients.filter(
       (p) =>
-        p.caseId.toLowerCase().includes(q) ||
-        p.name.toLowerCase().includes(q) ||
-        p.mobile.includes(q)
+        p.name?.toLowerCase().includes(q) ||
+        p.mobile?.includes(q)
     );
-  }, [search]);
+  }, [search, patients]);
 
-  /* ---------- UI STATES ---------- */
+  /* ================= SINGLE REPORT VIEW ================= */
 
-  // 1️⃣ Single Report View
-  if (selectedReport) {
+  if (selectedTest) {
     return (
       <div className="reports-wrapper">
         <div className="reports-container">
+
           <div className="reports-header">
-            <h2>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <polyline points="14 2 14 8 20 8"/>
-                <line x1="16" y1="13" x2="8" y2="13"/>
-                <line x1="16" y1="17" x2="8" y2="17"/>
-                <polyline points="10 9 9 9 8 9"/>
-              </svg>
-              Report Details
-            </h2>
-            <div className="btn-grp">
-                 <button className="btn-report btn-primary" onClick={() => setSelectedReport(null)}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="19" y1="12" x2="5" y2="12"/>
-                <polyline points="12 19 5 12 12 5"/>
-              </svg>
-              Back to Reports
-            </button>
+            <h2>{selectedTest.testName} Report</h2>
+
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button
+                className="btn-report btn-secondary"
+                onClick={() => setSelectedTest(null)}
+              >
+                Back
+              </button>
+
+              <button
+                className="btn-report btn-success"
+                onClick={handlePrint}
+              >
+                Print Report
+              </button>
             </div>
           </div>
 
-          <div className="report-preview">
-            <h2>Green Cross Genetics Lab</h2>
-            <p>Comprehensive Medical Report</p>
-            <hr />
-            
-            <p><b>Date:</b> {selectedReport.date}</p>
-            <p><b>Type:</b> {selectedReport.type}</p>
-            
-            <h4>Report Content</h4>
-            <p>{selectedReport.content}</p>
+          {/* PRINT AREA */}
+          <div id="report-print-area">
+            <div className="report-preview" style={{ padding: "20px" }}>
+              
+              <h2 style={{ textAlign: "center", marginBottom: "5px" }}>
+                Green Cross Genetics Lab
+              </h2>
+              <p style={{ textAlign: "center", marginTop: 0 }}>
+                Comprehensive Diagnostic Report
+              </p>
+
+              <hr />
+
+              <p><b>Patient:</b> {selectedTest.patientName}</p>
+              <p><b>Mobile:</b> {selectedTest.mobile}</p>
+              <p><b>Test:</b> {selectedTest.testName}</p>
+              <p><b>Date:</b> {new Date(selectedTest.createdAt).toLocaleDateString()}</p>
+
+              <hr />
+
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr>
+                    <th style={{ border: "1px solid #000", padding: "8px" }}>Parameter</th>
+                    <th style={{ border: "1px solid #000", padding: "8px" }}>Result</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(selectedTest.reportData).map(([key, value]) => (
+                    <tr key={key}>
+                      <td style={{ border: "1px solid #000", padding: "8px" }}>{key}</td>
+                      <td style={{ border: "1px solid #000", padding: "8px" }}>{String(value)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+
+            </div>
           </div>
 
         </div>
@@ -102,52 +194,48 @@ const ReportHistory = () => {
     );
   }
 
-  // 2️⃣ Date-wise Report List
+  /* ================= PATIENT TEST LIST ================= */
+
   if (selectedPatient) {
     return (
       <div className="reports-wrapper">
         <div className="reports-container">
+
           <div className="reports-header">
-            <h2>
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                <circle cx="12" cy="7" r="4"/>
-              </svg>
-              Reports – {selectedPatient.name}
-            </h2>
-            <div className="btn-grp">
-                <button className="btn-report btn-primary" onClick={() => setSelectedPatient(null)}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="19" y1="12" x2="5" y2="12"/>
-                <polyline points="12 19 5 12 12 5"/>
-              </svg>
+            <h2>{selectedPatient.name} – Tests</h2>
+
+            <button
+              className="btn-report btn-primary"
+              onClick={() => setSelectedPatient(null)}
+            >
               Back to Patients
             </button>
-            </div>
           </div>
 
           <table className="reports-table">
             <thead>
               <tr>
+                <th>Test Name</th>
                 <th>Date</th>
-                <th>Report Type</th>
-                <th>Actions</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
-              {selectedPatient.reports.map((r) => (
-                <tr key={r.id}>
-                  <td>{r.date}</td>
-                  <td>{r.type}</td>
+              {selectedPatient.tests.map((t, idx) => (
+                <tr key={idx}>
+                  <td>{t.testName}</td>
+                  <td>{new Date(t.createdAt).toLocaleDateString()}</td>
                   <td>
                     <button
                       className="btn-small btn-info"
-                      onClick={() => setSelectedReport(r)}
+                      onClick={() =>
+                        setSelectedTest({
+                          ...t,
+                          patientName: selectedPatient.name,
+                          mobile: selectedPatient.mobile
+                        })
+                      }
                     >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                        <circle cx="12" cy="12" r="3"/>
-                      </svg>
                       View Report
                     </button>
                   </td>
@@ -155,75 +243,66 @@ const ReportHistory = () => {
               ))}
             </tbody>
           </table>
+
         </div>
       </div>
     );
   }
 
-  // 3️⃣ Patient List
+  /* ================= PATIENT LIST ================= */
+
   return (
     <div className="reports-wrapper">
       <div className="reports-container">
+
         <div className="reports-header">
-          <h2>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-              <path d="M2 17l10 5 10-5"/>
-              <path d="M2 12l10 5 10-5"/>
-            </svg>
-            Report History
-          </h2>
-          <div className="search-bar d-flex flex-column">
-             <label>Search Patient Records</label>
+          <h2>Patient Report History</h2>
+
+          <div className="search-bar">
             <input
               type="text"
-              placeholder="Search by Case ID / Name / Mobile"
+              placeholder="Search patient by name / mobile"
               value={search}
-              className="form-control border border-dark"
               onChange={(e) => setSearch(e.target.value)}
+              className="form-control border border-dark"
             />
           </div>
         </div>
 
-        <table className="reports-table">
-          <thead>
-            <tr>
-              <th>Case ID</th>
-              <th>Patient Name</th>
-              <th>Mobile Number</th>
-              <th>Total Reports</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredPatients.map((p) => (
-              <tr key={p.caseId}>
-                <td>{p.caseId}</td>
-                <td>{p.name}</td>
-                <td>{p.mobile}</td>
-                <td>{p.reports.length}</td>
-                <td>
-                  <button
-                    className="btn-small btn-success"
-                    onClick={() => setSelectedPatient(p)}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                      <polyline points="14 2 14 8 20 8"/>
-                    </svg>
-                    View Reports
-                  </button>
-                </td>
+        {loading ? (
+          <div className="reports-form-card">Loading reports...</div>
+        ) : (
+          <table className="reports-table">
+            <thead>
+              <tr>
+                <th>Patient</th>
+                <th>Mobile</th>
+                <th>Referred By</th>
+                <th>Total Tests</th>
+                <th>Action</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-
-        {filteredPatients.length === 0 && (
-          <div className="reports-form-card" style={{ marginTop: '20px', textAlign: 'center' }}>
-            <p style={{ color: '#6b7280', fontSize: '1rem' }}>No patients found matching your search.</p>
-          </div>
+            </thead>
+            <tbody>
+              {filteredPatients.map((p) => (
+                <tr key={p.patientId}>
+                  <td>{p.name}</td>
+                  <td>{p.mobile}</td>
+                  <td>{p.referredBy}</td>
+                  <td>{p.tests.length}</td>
+                  <td>
+                    <button
+                      className="btn-small btn-success"
+                      onClick={() => setSelectedPatient(p)}
+                    >
+                      View Tests
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
+
       </div>
     </div>
   );

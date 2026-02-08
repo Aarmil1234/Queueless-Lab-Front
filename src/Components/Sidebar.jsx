@@ -2,11 +2,14 @@ import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
-  Settings,
+  FileText,
   Hospital,
-  FileText, 
   FileSearch,
+  SlidersHorizontal,
+  Ruler,
+  TestTube2
 } from "lucide-react";
+
 import { apiRequest } from "../reusable"; 
 
 const Sidebar = ({ collapsed }) => {
@@ -41,11 +44,11 @@ const Sidebar = ({ collapsed }) => {
 
   const menuItems = [
     { path: "/", icon: LayoutDashboard, label: "Dashboard" },
-    { path: "/reports", icon: FileText, label: "Reports" },
-    { path: "/history", icon: FileSearch, label: "Reports History" },
-    { path: "/settings", icon: Settings, label: "Settings" },
-    { path: "/addparam", icon: Settings, label: "Manage Parameter" },
-    { path: "/addrange", icon: Settings, label: "Manage Range" },
+  { path: "/reports", icon: FileText, label: "Reports" },
+  { path: "/history", icon: FileSearch, label: "Reports History" },
+  { path: "/addparam", icon: SlidersHorizontal, label: "Manage Parameter" },
+  { path: "/addrange", icon: Ruler, label: "Manage Range" },
+  { path: "/uriareport", icon: TestTube2, label: "Urine Report" },
   ];
 
   const sidebarStyle = {

@@ -13,11 +13,13 @@ export default function Reports() {
     gender: "Male",
     dateOfBirth: "",
     age: "",
+    ageType: "year",
     referredByDoctor: "",
     doctorContactNo: "",
     address: "",
     mobileNumber: ""
   });
+
 
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
@@ -70,6 +72,7 @@ export default function Reports() {
       gender: "Male",
       dateOfBirth: "",
       age: "",
+      ageType: "year",
       referredByDoctor: "",
       doctorContactNo: "",
       address: "",
@@ -78,23 +81,51 @@ export default function Reports() {
     setSelectedTests([]);
   };
 
+
   const calculateAge = (dob) => {
-    if (!dob) return "";
+    if (!dob) return { age: "", ageType: "year" };
+
     const birthDate = new Date(dob);
     const today = new Date();
 
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
+    const diffTime = today - birthDate;
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-    if (
-      monthDiff < 0 ||
-      (monthDiff === 0 && today.getDate() < birthDate.getDate())
-    ) {
-      age--;
+    // less than 30 days → days
+    if (diffDays < 30) {
+      return {
+        age: diffDays,
+        ageType: "days"
+      };
     }
 
-    return age;
+    // less than 12 months → months
+    const diffMonths =
+      today.getMonth() -
+      birthDate.getMonth() +
+      12 * (today.getFullYear() - birthDate.getFullYear());
+
+    if (diffMonths < 12) {
+      return {
+        age: diffMonths,
+        ageType: "month"
+      };
+    }
+
+    // else → years
+    let years = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      years--;
+    }
+
+    return {
+      age: years,
+      ageType: "year"
+    };
   };
+
 
 
   // ================= SUBMIT PATIENT =================
@@ -110,8 +141,10 @@ export default function Reports() {
     const payload = {
       ...formData,
       age: Number(formData.age),
+      ageType: formData.ageType,
       tests: selectedTests
     };
+
 
     try {
       setLoading(true);
@@ -227,24 +260,40 @@ export default function Reports() {
                   value={formData.dateOfBirth}
                   onChange={(e) => {
                     const dob = e.target.value;
+                    const result = calculateAge(dob);
+
                     setFormData({
                       ...formData,
                       dateOfBirth: dob,
-                      age: calculateAge(dob)
+                      age: result.age,
+                      ageType: result.ageType
                     });
                   }}
+
                   required
                 />
 
 
                 <label>Age</label>
+                <div className="d-flex align-items-center gap-2">
                 <input
                   type="number"
+                  className="form-control"
                   name="age"
                   value={formData.age}
                   readOnly
                   style={{ background: "#f3f4f6", cursor: "not-allowed" }}
                 />
+                <input
+                  type="text"
+                  className="form-control"
+                  name="ageType"
+                  value={formData.ageType}
+                  readOnly
+                  style={{ background: "#f3f4f6", cursor: "not-allowed" }}
+                />
+                </div>
+
 
 
                 <label>Referred By Doctor</label>

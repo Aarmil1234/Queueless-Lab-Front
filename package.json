@@ -62,5 +62,6 @@
   "main": "Server.js",
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "homepage": "https://lab.queueless.co.in"
 }

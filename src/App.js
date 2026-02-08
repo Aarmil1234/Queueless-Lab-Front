@@ -22,6 +22,8 @@ import Settings from "./Components/Settings.jsx";
 
 import AddParameterPage from "./Components/AddParamtwo.jsx";
 import AddParameterRange from "./Components/AddRange.jsx";
+import AddUriaReport from "./Components/AddUriaReport.jsx";
+import AddUrineReport from "./Components/AddUriaReport.jsx";
 
 const AppRoutes = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -75,6 +77,7 @@ const AppRoutes = () => {
           <Route path="/settings" element={<Settings />} />
           <Route path="/addparam" element={<AddParameterPage />} />
           <Route path="/addrange" element={<AddParameterRange />} />
+          <Route path="/uriareport" element={<AddUrineReport />} />
 
           {/* ✅ Redirect all unknown routes to /404 */}
           <Route path="/404" element={<UnknownPage />} />

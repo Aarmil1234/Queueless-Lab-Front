@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -13,27 +13,26 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import { apiRequest } from "../reusable";
 
 const Dashboard = () => {
-  /* ------------------ STATIC DATA ------------------ */
 
-  const totalReports = 1248;
+  /* ------------------ STATES ------------------ */
+
+  const [totalPatients, setTotalPatients] = useState(0);
+  const [testData, setTestData] = useState([]);
+  const [doctorList, setDoctorList] = useState([]);
+
+  const [loadingTests, setLoadingTests] = useState(false);
+  const [loadingDoctors, setLoadingDoctors] = useState(false);
+
+  /* ------------------ STATIC DATA ------------------ */
 
   const cityData = [
     { city: "Ahmedabad", reports: 420 },
     { city: "Surat", reports: 310 },
     { city: "Vadodara", reports: 210 },
     { city: "Rajkot", reports: 308 },
-  ];
-
-  // ✅ Test-wise report data
-  const testData = [
-    { name: "CBC", value: 320 },
-    { name: "S. Creatinine", value: 210 },
-    { name: "RBS", value: 180 },
-    { name: "Urine Analysis", value: 150 },
-    { name: "LFT", value: 230 },
-    { name: "RFT", value: 158 },
   ];
 
   const weeklyData = [
@@ -55,6 +54,83 @@ const Dashboard = () => {
     "#ef4444",
   ];
 
+  /* ------------------ API CALLS ------------------ */
+
+  // TOTAL PATIENTS
+  const fetchTotalPatients = async () => {
+    try {
+      const res = await apiRequest("get", "/api/dashboard/totalPatientCount");
+      console.log("TOTAL PATIENTS:", res);
+
+      setTotalPatients(
+        res?.data?.totalPatients ||
+        res?.totalPatients ||
+        0
+      );
+    } catch (err) {
+      console.error("Total patients fetch error:", err);
+    }
+  };
+
+  // TEST-WISE PATIENTS (FINAL FIX)
+  const fetchTestWisePatients = async () => {
+    try {
+      setLoadingTests(true);
+
+      const res = await apiRequest("get", "/api/dashboard/testWisePatient");
+
+      console.log("FULL TEST API:", res);
+
+      // 🔥 correct path for your wrapper
+      const apiData = res?.data?.data?.totalPatients;
+
+      if (!Array.isArray(apiData)) {
+        console.warn("API did not return array:", apiData);
+        setTestData([]);
+        return;
+      }
+
+      const formatted = apiData.map(item => ({
+        name: item.testName,
+        value: Number(item.patientCount)
+      }));
+
+      console.log("FORMATTED PIE DATA:", formatted);
+
+      setTestData(formatted);
+
+    } catch (err) {
+      console.error("Test-wise fetch error:", err);
+      setTestData([]);
+    } finally {
+      setLoadingTests(false);
+    }
+  };
+
+  // DOCTOR-WISE
+  const fetchDoctorWisePatients = async () => {
+    try {
+      setLoadingDoctors(true);
+
+      const res = await apiRequest("get", "/api/dashboard/doctorWisePatient");
+      console.log("DOCTOR LIST:", res);
+
+      setDoctorList(res?.data || []);
+
+    } catch (err) {
+      console.error("Doctor fetch error:", err);
+      setDoctorList([]);
+    } finally {
+      setLoadingDoctors(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTotalPatients();
+    fetchTestWisePatients();
+    fetchDoctorWisePatients();
+  }, []);
+
   /* ------------------ UI ------------------ */
 
   return (
@@ -66,15 +142,15 @@ const Dashboard = () => {
         minHeight: "100vh",
       }}
     >
-      {/* Header */}
+      {/* HEADER */}
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 28, margin: 0 }}>Dashboard</h1>
         <p style={{ margin: 0, color: "#6b7280" }}>
-          Overview of Reports (Static)
+          Lab Analytics Overview
         </p>
       </div>
 
-      {/* Total Reports */}
+      {/* TOTAL PATIENTS */}
       <div
         style={{
           background: "white",
@@ -83,13 +159,13 @@ const Dashboard = () => {
           marginBottom: 24,
         }}
       >
-        <h3 style={{ margin: 0, color: "#6b7280" }}>Total Reports</h3>
+        <h3 style={{ margin: 0, color: "#6b7280" }}>Total Patients</h3>
         <p style={{ fontSize: 36, fontWeight: 700, margin: "10px 0 0" }}>
-          {totalReports}
+          {totalPatients}
         </p>
       </div>
 
-      {/* Graphs */}
+      {/* GRAPHS */}
       <div
         style={{
           display: "grid",
@@ -97,7 +173,7 @@ const Dashboard = () => {
           gap: 20,
         }}
       >
-        {/* City Graph */}
+        {/* CITY GRAPH */}
         <div style={{ background: "white", padding: 20, borderRadius: 12 }}>
           <h3>City-wise Reports</h3>
           <div style={{ height: 260 }}>
@@ -113,36 +189,40 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* ✅ Test-wise Pie Chart */}
+        {/* PIE CHART */}
         <div style={{ background: "white", padding: 20, borderRadius: 12 }}>
           <h3>Test-wise Patient Distribution</h3>
-          <div style={{ height: 260 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={testData}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={90}
-                  paddingAngle={4}
-                >
-                  {testData.map((_, index) => (
-                    <Cell
-                      key={index}
-                      fill={COLORS[index % COLORS.length]}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
+
+          {loadingTests ? (
+            <p>Loading test data...</p>
+          ) : testData.length === 0 ? (
+            <p>No test data available</p>
+          ) : (
+            <div style={{ height: 260 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={testData}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={90}
+                    paddingAngle={4}
+                  >
+                    {testData.map((_, index) => (
+                      <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
 
-        {/* Weekly Graph */}
+        {/* WEEKLY GRAPH */}
         <div
           style={{
             gridColumn: "1 / -1",
@@ -159,17 +239,50 @@ const Dashboard = () => {
                 <XAxis dataKey="day" />
                 <YAxis />
                 <Tooltip />
-                <Line
-                  type="monotone"
-                  dataKey="reports"
-                  stroke="#10b981"
-                  strokeWidth={3}
-                  dot={{ r: 5 }}
-                />
+                <Line type="monotone" dataKey="reports" stroke="#10b981" strokeWidth={3} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
+      </div>
+
+      {/* DOCTOR TABLE */}
+      <div
+        style={{
+          background: "white",
+          padding: 20,
+          borderRadius: 12,
+          marginTop: 24,
+        }}
+      >
+        <h3>Reference Doctors</h3>
+
+        {loadingDoctors ? (
+          <p>Loading doctors...</p>
+        ) : doctorList.length === 0 ? (
+          <p>No doctor data available</p>
+        ) : (
+          <table className="reports-table">
+            <thead>
+              <tr>
+                <th>Doctor Name</th>
+                <th>Contact</th>
+                <th>Total Patients</th>
+              </tr>
+            </thead>
+            <tbody>
+              {doctorList.map((doc, index) => (
+                <tr key={index}>
+                  <td>{doc.doctorName}</td>
+                  <td>{doc.doctorContact}</td>
+                  <td style={{ fontWeight: "700", color: "#6366f1" }}>
+                    {doc.patientCount}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );
