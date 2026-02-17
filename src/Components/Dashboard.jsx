@@ -57,20 +57,24 @@ const Dashboard = () => {
   /* ------------------ API CALLS ------------------ */
 
   // TOTAL PATIENTS
-  const fetchTotalPatients = async () => {
-    try {
-      const res = await apiRequest("get", "/api/dashboard/totalPatientCount");
-      console.log("TOTAL PATIENTS:", res);
+ const fetchTotalPatients = async () => {
+  try {
+    const res = await apiRequest("get", "/api/dashboard/totalPatientCount");
 
-      setTotalPatients(
-        res?.data?.totalPatients ||
-        res?.totalPatients ||
-        0
-      );
-    } catch (err) {
-      console.error("Total patients fetch error:", err);
-    }
-  };
+    const total =
+      res?.data?.data?.totalPatients ??
+      res?.data?.totalPatients ??
+      res?.totalPatients ??
+      0;
+
+    setTotalPatients(Number(total));
+
+  } catch (err) {
+    console.error("Total patients fetch error:", err);
+    setTotalPatients(0);
+  }
+};
+
 
   // TEST-WISE PATIENTS (FINAL FIX)
   const fetchTestWisePatients = async () => {
