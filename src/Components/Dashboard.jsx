@@ -17,8 +17,6 @@ import { apiRequest } from "../reusable";
 
 const Dashboard = () => {
 
-  /* ------------------ STATES ------------------ */
-
   const [totalPatients, setTotalPatients] = useState(0);
   const [testData, setTestData] = useState([]);
   const [doctorList, setDoctorList] = useState([]);
@@ -26,23 +24,16 @@ const Dashboard = () => {
   const [loadingTests, setLoadingTests] = useState(false);
   const [loadingDoctors, setLoadingDoctors] = useState(false);
 
-  /* ------------------ STATIC DATA ------------------ */
+  const [weeklyData, setWeeklyData] = useState([]);
+  const [loadingWeekly, setLoadingWeekly] = useState(false);
+
+  /* ------------------ STATIC CITY DATA (for now) ------------------ */
 
   const cityData = [
     { city: "Ahmedabad", reports: 420 },
     { city: "Surat", reports: 310 },
     { city: "Vadodara", reports: 210 },
     { city: "Rajkot", reports: 308 },
-  ];
-
-  const weeklyData = [
-    { day: "Mon", reports: 120 },
-    { day: "Tue", reports: 180 },
-    { day: "Wed", reports: 150 },
-    { day: "Thu", reports: 200 },
-    { day: "Fri", reports: 170 },
-    { day: "Sat", reports: 220 },
-    { day: "Sun", reports: 160 },
   ];
 
   const COLORS = [
@@ -76,20 +67,53 @@ const Dashboard = () => {
 };
 
 
-  // TEST-WISE PATIENTS (FINAL FIX)
+  // WEEKLY REPORTS (DYNAMIC)
+  const fetchWeeklyReports = async () => {
+    try {
+      setLoadingWeekly(true);
+
+      const res = await apiRequest("get", "/api/dashboard/weeklyReportData");
+      console.log("WEEKLY FULL RESPONSE:", res);
+
+      // 🔥 important mapping based on your backend response
+      const apiData = res?.data;
+
+      if (!apiData) {
+        setWeeklyData([]);
+        return;
+      }
+
+      const formatted = [
+        { day: "Mon", reports: Number(apiData.monday || 0) },
+        { day: "Tue", reports: Number(apiData.tuesday || 0) },
+        { day: "Wed", reports: Number(apiData.wednesday || 0) },
+        { day: "Thu", reports: Number(apiData.thursday || 0) },
+        { day: "Fri", reports: Number(apiData.friday || 0) },
+        { day: "Sat", reports: Number(apiData.saturday || 0) },
+        { day: "Sun", reports: Number(apiData.sunday || 0) },
+      ];
+
+      setWeeklyData(formatted);
+
+    } catch (err) {
+      console.error("Weekly fetch error:", err);
+      setWeeklyData([]);
+    } finally {
+      setLoadingWeekly(false);
+    }
+  };
+
+  // TEST-WISE PATIENTS
   const fetchTestWisePatients = async () => {
     try {
       setLoadingTests(true);
 
       const res = await apiRequest("get", "/api/dashboard/testWisePatient");
-
       console.log("FULL TEST API:", res);
 
-      // 🔥 correct path for your wrapper
       const apiData = res?.data?.data?.totalPatients;
 
       if (!Array.isArray(apiData)) {
-        console.warn("API did not return array:", apiData);
         setTestData([]);
         return;
       }
@@ -98,8 +122,6 @@ const Dashboard = () => {
         name: item.testName,
         value: Number(item.patientCount)
       }));
-
-      console.log("FORMATTED PIE DATA:", formatted);
 
       setTestData(formatted);
 
@@ -111,7 +133,7 @@ const Dashboard = () => {
     }
   };
 
-  // DOCTOR-WISE
+  // DOCTOR-WISE PATIENTS
   const fetchDoctorWisePatients = async () => {
     try {
       setLoadingDoctors(true);
@@ -133,6 +155,7 @@ const Dashboard = () => {
     fetchTotalPatients();
     fetchTestWisePatients();
     fetchDoctorWisePatients();
+    fetchWeeklyReports();
   }, []);
 
   /* ------------------ UI ------------------ */
@@ -154,21 +177,20 @@ const Dashboard = () => {
         </p>
       </div>
 
-
       {/* GRAPHS */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit,minmax(350px,1fr))",
+          gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))",
           gap: 20,
         }}
       >
+        {/* TOTAL PATIENTS CARD */}
         <div
           style={{
             background: "white",
             padding: 24,
             borderRadius: 12,
-            marginBottom: 24,
             height: "150px",
             boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)"
           }}
@@ -178,6 +200,7 @@ const Dashboard = () => {
             {totalPatients}
           </p>
         </div>
+
         {/* CITY GRAPH */}
         <div style={{ background: "white", padding: 20, borderRadius: 12, boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)" }}>
           <h3>City-wise Reports</h3>
@@ -226,57 +249,57 @@ const Dashboard = () => {
             </div>
           )}
         </div>
-        </div>
+      </div>
 
-            {/* DOCTOR TABLE */}
-            <div
-              style={{
-                background: "white",
-                padding: 20,
-                borderRadius: 12,
-                marginTop: 24,
-              }}
-            >
-              <h3>Reference Doctors</h3>
-      
-              {loadingDoctors ? (
-                <p>Loading doctors...</p>
-              ) : doctorList.length === 0 ? (
-                <p>No doctor data available</p>
-              ) : (
-                <table className="reports-table">
-                  <thead>
-                    <tr>
-                      <th>Doctor Name</th>
-                      <th>Contact</th>
-                      <th>Total Patients</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {doctorList.map((doc, index) => (
-                      <tr key={index}>
-                        <td>{doc.doctorName}</td>
-                        <td>{doc.doctorContact}</td>
-                        <td style={{ fontWeight: "700", color: "#6366f1" }}>
-                          {doc.patientCount}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-        {/* WEEKLY GRAPH */}
-        <div
-          style={{
-            gridColumn: "1 / -1",
-            background: "white",
-            padding: 20,
-            borderRadius: 12,
-            boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)"
-          }}
-        >
-          <h3>Weekly Reports</h3>
+      {/* DOCTOR TABLE */}
+      <div style={{ background: "white", padding: 20, borderRadius: 12, marginTop: 24 }}>
+        <h3>Reference Doctors</h3>
+
+        {loadingDoctors ? (
+          <p>Loading doctors...</p>
+        ) : doctorList.length === 0 ? (
+          <p>No doctor data available</p>
+        ) : (
+          <table className="reports-table">
+            <thead>
+              <tr>
+                <th>Doctor Name</th>
+                <th>Contact</th>
+                <th>Total Patients</th>
+              </tr>
+            </thead>
+            <tbody>
+              {doctorList.map((doc, index) => (
+                <tr key={index}>
+                  <td>{doc.doctorName}</td>
+                  <td>{doc.doctorContact}</td>
+                  <td style={{ fontWeight: "700", color: "#6366f1" }}>
+                    {doc.patientCount}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* WEEKLY GRAPH */}
+      <div
+        style={{
+          background: "white",
+          padding: 20,
+          borderRadius: 12,
+          marginTop: 24,
+          boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)"
+        }}
+      >
+        <h3>Weekly Reports</h3>
+
+        {loadingWeekly ? (
+          <p>Loading weekly reports...</p>
+        ) : !weeklyData || weeklyData.length === 0 ? (
+          <p>No weekly data available</p>
+        ) : (
           <div style={{ height: 260 }}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={weeklyData}>
@@ -284,13 +307,18 @@ const Dashboard = () => {
                 <XAxis dataKey="day" />
                 <YAxis />
                 <Tooltip />
-                <Line type="monotone" dataKey="reports" stroke="#10b981" strokeWidth={3} />
+                <Line
+                  type="monotone"
+                  dataKey="reports"
+                  stroke="#10b981"
+                  strokeWidth={3}
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        )}
       </div>
-
+    </div>
   );
 };
 

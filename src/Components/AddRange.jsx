@@ -34,6 +34,7 @@ export default function ParameterRangeManager() {
   // EDIT STATES
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
+  
 
   // ===============================
   // FETCH PARAMETERS
@@ -271,7 +272,7 @@ export default function ParameterRangeManager() {
             {/* PARAMETER DROPDOWN */}
             <div style={{ marginBottom: "30px" }}>
               <div className="reports-form-grid d-flex flex-column align-items-start gap-2">
-                <label className="text-white">Parameter:</label>
+                <label className="text-dark">Parameter:</label>
                 <select
                   value={parameterId}
                   onChange={handleParameterChange}
@@ -396,7 +397,7 @@ export default function ParameterRangeManager() {
             <div className="reports-form-grid">
 
               {/* PARAMETER DROPDOWN */}
-              <label>Parameter:</label>
+              <label className="text-dark">Parameter:</label>
               <select
                 value={parameterId}
                 onChange={(e) => setParameterId(e.target.value)}

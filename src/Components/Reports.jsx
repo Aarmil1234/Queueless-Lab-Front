@@ -3,10 +3,27 @@ import { apiRequest } from "../reusable";
 import { Plus, ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
 
 export default function Reports() {
-  const [view, setView] = useState("list"); // list | add
+
+  // screens: list → tests → add → addResult
+  const [screen, setScreen] = useState("list");
+
   const [reports, setReports] = useState([]);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [selectedTest, setSelectedTest] = useState(null);
+
   const [tests, setTests] = useState([]);
   const [selectedTests, setSelectedTests] = useState([]);
+
+  const [listLoading, setListLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("");
+
+  const [resultData, setResultData] = useState({
+    result: "",
+    remark: ""
+  });
 
   const [formData, setFormData] = useState({
     patientName: "",
@@ -20,26 +37,64 @@ export default function Reports() {
     mobileNumber: ""
   });
 
+  const calculateAge = (dob) => {
+  if (!dob) return { age: "", ageType: "year" };
 
-  const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState("");
-  const [loading, setLoading] = useState(false);
+  const birthDate = new Date(dob);
+  const today = new Date();
 
-  // ================= FETCH REPORTS =================
+  const diffTime = today - birthDate;
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 30) {
+    return { age: diffDays, ageType: "days" };
+  }
+
+  const diffMonths =
+    today.getMonth() -
+    birthDate.getMonth() +
+    12 * (today.getFullYear() - birthDate.getFullYear());
+
+  if (diffMonths < 12) {
+    return { age: diffMonths, ageType: "month" };
+  }
+
+  let years = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    years--;
+  }
+
+  return { age: years, ageType: "year" };
+};
+
+
+  // ================= FETCH PENDING CASES =================
   const fetchReports = async () => {
     try {
-      const res = await apiRequest("get", "/api/report");
-      setReports(res?.data?.Data || res?.data || []);
+      setListLoading(true);
+      const res = await apiRequest("get", "/api/patient/pendingReportPatient");
+
+      const data =
+        res?.data?.Data ||
+        res?.data?.data ||
+        res?.data ||
+        [];
+
+      setReports(data);
     } catch (err) {
-      console.error("Failed to fetch reports", err);
+      console.error("Failed to fetch pending patients", err);
+    } finally {
+      setListLoading(false);
     }
   };
 
-  // ================= FETCH TESTS =================
+  // ================= FETCH TEST MASTER =================
   const fetchTests = async () => {
     try {
       const res = await apiRequest("get", "/api/test");
-      setTests(res?.data?.Data || []);
+      setTests(res?.data?.Data || res?.data || []);
     } catch (err) {
       console.error("Failed to fetch tests", err);
     }
@@ -49,13 +104,48 @@ export default function Reports() {
     fetchReports();
   }, []);
 
-  // ================= SWITCH TO ADD VIEW =================
-  const handleAddView = async () => {
-    await fetchTests();
-    setView("add");
+  // ================= OPEN PATIENT TEST LIST =================
+  const openPatientTests = (patient) => {
+    setSelectedPatient(patient);
+    setScreen("tests");
   };
 
-  // ================= FORM HANDLERS =================
+  // ================= OPEN ADD PATIENT =================
+  const openAddPatient = async () => {
+    await fetchTests();
+    setScreen("add");
+  };
+
+  // ================= OPEN ADD RESULT =================
+  const openAddResult = (test) => {
+    setSelectedTest(test);
+    setScreen("addResult");
+  };
+
+  // ================= SAVE RESULT =================
+  const handleSaveResult = async () => {
+    try {
+      setLoading(true);
+
+      const payload = {
+        caseId: selectedPatient.caseId,
+        testKey: selectedTest.key,
+        result: resultData.result,
+        remark: resultData.remark
+      };
+
+      await apiRequest("post", "/api/report/addResult", payload);
+
+      setResultData({ result: "", remark: "" });
+      setScreen("tests");
+    } catch (err) {
+      console.error("Failed to save result", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ================= ADD PATIENT =================
   const toggleTest = (key) => {
     setSelectedTests((prev) =>
       prev.includes(key) ? prev.filter((t) => t !== key) : [...prev, key]
@@ -66,69 +156,6 @@ export default function Reports() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const resetForm = () => {
-    setFormData({
-      patientName: "",
-      gender: "Male",
-      dateOfBirth: "",
-      age: "",
-      ageType: "year",
-      referredByDoctor: "",
-      doctorContactNo: "",
-      address: "",
-      mobileNumber: ""
-    });
-    setSelectedTests([]);
-  };
-
-
-  const calculateAge = (dob) => {
-    if (!dob) return { age: "", ageType: "year" };
-
-    const birthDate = new Date(dob);
-    const today = new Date();
-
-    const diffTime = today - birthDate;
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-    // less than 30 days → days
-    if (diffDays < 30) {
-      return {
-        age: diffDays,
-        ageType: "days"
-      };
-    }
-
-    // less than 12 months → months
-    const diffMonths =
-      today.getMonth() -
-      birthDate.getMonth() +
-      12 * (today.getFullYear() - birthDate.getFullYear());
-
-    if (diffMonths < 12) {
-      return {
-        age: diffMonths,
-        ageType: "month"
-      };
-    }
-
-    // else → years
-    let years = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      years--;
-    }
-
-    return {
-      age: years,
-      ageType: "year"
-    };
-  };
-
-
-
-  // ================= SUBMIT PATIENT =================
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -138,26 +165,23 @@ export default function Reports() {
       return;
     }
 
-    const payload = {
-      ...formData,
-      age: Number(formData.age),
-      ageType: formData.ageType,
-      tests: selectedTests
-    };
-
-
     try {
       setLoading(true);
+
+      const payload = {
+        ...formData,
+        age: Number(formData.age),
+        tests: selectedTests
+      };
+
       await apiRequest("post", "/api/patient", payload);
 
       setMessage("Patient added successfully!");
       setMessageType("success");
 
-      resetForm();
-      setView("list");
+      setScreen("list");
       fetchReports();
     } catch (err) {
-      console.error(err);
       setMessage("Failed to add patient");
       setMessageType("error");
     } finally {
@@ -170,57 +194,119 @@ export default function Reports() {
     <div className="reports-wrapper">
       <div className="reports-container">
 
-        {/* ================= REPORTS LIST VIEW ================= */}
-        {view === "list" && (
+        {/* ================= SCREEN 1: LIST ================= */}
+        {screen === "list" && (
           <>
             <div className="reports-header">
               <h2>Reports</h2>
-              <button className="btn-report btn-primary" onClick={handleAddView}>
+
+              <button className="btn-report btn-primary" onClick={openAddPatient}>
                 <Plus size={18} /> Add Patient
               </button>
             </div>
 
-            <div className="reports-table-card">
-              <table className="reports-table">
-                <thead>
+            <table className="reports-table">
+              <thead>
+                <tr>
+                  <th>Case ID</th>
+                  <th>Patient Name</th>
+                  <th>Test Count</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {listLoading ? (
                   <tr>
-                    <th>Case ID</th>
-                    <th>Patient</th>
-                    <th>Mobile</th>
-                    <th>Test</th>
+                    <td colSpan="4" style={{ textAlign: "center" }}>
+                      Loading...
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {reports.length === 0 ? (
-                    <tr>
-                      <td colSpan="4" style={{ textAlign: "center" }}>
-                        No reports found
+                ) : reports.length === 0 ? (
+                  <tr>
+                    <td colSpan="4" style={{ textAlign: "center" }}>
+                      No pending cases
+                    </td>
+                  </tr>
+                ) : (
+                  reports.map((r, idx) => (
+                    <tr key={idx}>
+                      <td>{r.caseId}</td>
+                      <td>{r.patientName}</td>
+                      <td>{r.tests?.length || 0}</td>
+                      <td>
+                        <button
+                          className="btn-report btn-primary"
+                          onClick={() => openPatientTests(r)}
+                        >
+                          Add Report
+                        </button>
                       </td>
                     </tr>
-                  ) : (
-                    reports.map((r, idx) => (
-                      <tr key={idx}>
-                        <td>{r.caseId}</td>
-                        <td>{r.patientName}</td>
-                        <td>{r.mobileNumber}</td>
-                        <td>{r.testName}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  ))
+                )}
+              </tbody>
+            </table>
           </>
         )}
 
-        {/* ================= ADD PATIENT VIEW ================= */}
-        {view === "add" && (
+        {/* ================= SCREEN 2: TEST LIST ================= */}
+        {screen === "tests" && selectedPatient && (
+          <>
+            <div className="reports-header">
+              <h2>{selectedPatient.patientName} - Tests</h2>
+
+              <button className="btn-report btn-secondary" onClick={() => setScreen("list")}>
+                <ArrowLeft size={18} /> Back
+              </button>
+            </div>
+
+            <table className="reports-table">
+              <thead>
+                <tr>
+                  <th>Test Name</th>
+                  <th>Status</th>
+                  <th>Add Result</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {selectedPatient.tests?.map((test, idx) => {
+                  const testName =
+                    typeof test === "string"
+                      ? test
+                      : test?.name || test?.testName || "-";
+
+                  return (
+                    <tr key={idx}>
+                      <td>{testName}</td>
+                      <td>{test?.isCompleted ? "Completed" : "Pending"}</td>
+                      <td>
+                        {!test?.isCompleted && (
+                          <button
+                            className="btn-report btn-success"
+                            onClick={() => openAddResult(test)}
+                          >
+                            Add Result
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </>
+        )}
+
+        {/* ================= SCREEN 3: ADD PATIENT ================= */}
+         {screen === "add" && (
           <>
             <div className="reports-header">
               <h2>Add Patient</h2>
               <button
                 className="btn-report btn-secondary"
-                onClick={() => setView("list")}
+                onClick={() => setScreen("list")}
               >
                 <ArrowLeft size={18} /> Back
               </button>
@@ -343,6 +429,39 @@ export default function Reports() {
                 {loading ? "Saving..." : "Add Patient"}
               </button>
             </form>
+          </>
+        )}
+
+        {/* ================= SCREEN 4: ADD RESULT ================= */}
+        {screen === "addResult" && selectedTest && (
+          <>
+            <div className="reports-header">
+              <h2>
+                Add Result - {
+                  typeof selectedTest === "string"
+                    ? selectedTest
+                    : selectedTest?.name || selectedTest?.testName || "-"
+                }
+              </h2>
+
+              <button className="btn-report btn-secondary" onClick={() => setScreen("tests")}>
+                <ArrowLeft size={18} /> Back
+              </button>
+            </div>
+
+            <textarea
+              placeholder="Enter Result"
+              onChange={(e) => setResultData({ ...resultData, result: e.target.value })}
+            />
+
+            <textarea
+              placeholder="Remark"
+              onChange={(e) => setResultData({ ...resultData, remark: e.target.value })}
+            />
+
+            <button className="btn-report btn-primary" onClick={handleSaveResult}>
+              Save Result
+            </button>
           </>
         )}
 
