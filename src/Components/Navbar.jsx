@@ -144,7 +144,7 @@ const Navbar = ({ collapsed, toggleSidebar }) => {
             <span style={{
               fontSize: '0.8rem',
               color: '#6b7280'
-            }}>Hospital Admin</span>
+            }}>Lab Admin</span>
           </div>
         </div>
         

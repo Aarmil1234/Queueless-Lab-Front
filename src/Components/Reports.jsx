@@ -38,31 +38,40 @@ export default function Reports() {
   });
 
   const calculateAge = (dob) => {
-  if (!dob) return { age: "", ageType: "year" };
+  if (!dob) {
+  setFormData({ ...formData, dateOfBirth: "", age: "", ageType: "year" });
+  return;
+}
 
   const birthDate = new Date(dob);
   const today = new Date();
 
-  const diffTime = today - birthDate;
+  // total days difference
+  const diffTime = today.getTime() - birthDate.getTime();
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
+  // Days (0–29)
   if (diffDays < 30) {
     return { age: diffDays, ageType: "days" };
   }
 
-  const diffMonths =
-    today.getMonth() -
-    birthDate.getMonth() +
-    12 * (today.getFullYear() - birthDate.getFullYear());
+  // Months (< 12 months)
+  const months =
+    (today.getFullYear() - birthDate.getFullYear()) * 12 +
+    (today.getMonth() - birthDate.getMonth()) -
+    (today.getDate() < birthDate.getDate() ? 1 : 0);
 
-  if (diffMonths < 12) {
-    return { age: diffMonths, ageType: "month" };
+  if (months < 12) {
+    return { age: months, ageType: "month" };
   }
 
+  // Years
   let years = today.getFullYear() - birthDate.getFullYear();
-  const monthDiff = today.getMonth() - birthDate.getMonth();
-
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+  if (
+    today.getMonth() < birthDate.getMonth() ||
+    (today.getMonth() === birthDate.getMonth() &&
+      today.getDate() < birthDate.getDate())
+  ) {
     years--;
   }
 
@@ -211,6 +220,8 @@ export default function Reports() {
                   <th>Case ID</th>
                   <th>Patient Name</th>
                   <th>Test Count</th>
+                  <th>Mobile Number</th>
+                  <th>Age</th>
                   <th>Action</th>
                 </tr>
               </thead>
@@ -234,6 +245,8 @@ export default function Reports() {
                       <td>{r.caseId}</td>
                       <td>{r.patientName}</td>
                       <td>{r.tests?.length || 0}</td>
+                      <td>{r.mobileNumber}</td>
+                      <td>{r.age + " " + r.ageType}</td>
                       <td>
                         <button
                           className="btn-report btn-primary"
