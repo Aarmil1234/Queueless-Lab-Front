@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { apiRequest } from "../reusable";
 import { Plus, ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
+import * as XLSX from "xlsx";
 
 export default function Reports() {
 
@@ -19,6 +20,7 @@ export default function Reports() {
 
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
+  const [excelTests, setExcelTests] = useState({});
 
   const [resultData, setResultData] = useState({
     result: "",
@@ -98,6 +100,46 @@ export default function Reports() {
       setListLoading(false);
     }
   };
+
+  const fetchExcelTests = async () => {
+  try {
+    const response = await fetch("/Reportss.xlsx");
+    const data = await response.arrayBuffer();
+
+    const workbook = XLSX.read(data);
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+    const json = XLSX.utils.sheet_to_json(sheet);
+
+    // Convert into grouped structure
+    const formatted = {};
+
+    json.forEach((row) => {
+      const report = row["Reports"];
+      const sub = row["Sub categories"];
+      const normal = row["Normal values"];
+      const unit = row["Unit"];
+
+      if (!report) return;
+
+      if (!formatted[report]) formatted[report] = [];
+
+      formatted[report].push({
+        name: sub,
+        normalValue: normal,
+        unit: unit,
+      });
+    });
+
+    setExcelTests(formatted);
+  } catch (err) {
+    console.error("Excel read failed", err);
+  }
+};
+
+useEffect(() => {
+  fetchExcelTests();
+}, []);
 
   // ================= FETCH TEST MASTER =================
   const fetchTests = async () => {
@@ -447,36 +489,41 @@ export default function Reports() {
 
         {/* ================= SCREEN 4: ADD RESULT ================= */}
         {screen === "addResult" && selectedTest && (
-          <>
-            <div className="reports-header">
-              <h2>
-                Add Result - {
-                  typeof selectedTest === "string"
-                    ? selectedTest
-                    : selectedTest?.name || selectedTest?.testName || "-"
-                }
-              </h2>
+  <>
+    <div className="reports-header">
+      <h2>Add Result - {selectedTest.name}</h2>
+    </div>
 
-              <button className="btn-report btn-secondary" onClick={() => setScreen("tests")}>
-                <ArrowLeft size={18} /> Back
-              </button>
-            </div>
+    {excelTests[selectedTest.name]?.map((field, index) => (
+      <div key={index} style={{ marginBottom: "15px" }}>
+        <label>{field.name}</label>
 
-            <textarea
-              placeholder="Enter Result"
-              onChange={(e) => setResultData({ ...resultData, result: e.target.value })}
-            />
+        {/* Observed value input */}
+        <input
+          type="text"
+          placeholder="Observed Value"
+          onChange={(e) =>
+            setResultData((prev) => ({
+              ...prev,
+              [field.name]: e.target.value
+            }))
+          }
+        />
 
-            <textarea
-              placeholder="Remark"
-              onChange={(e) => setResultData({ ...resultData, remark: e.target.value })}
-            />
-
-            <button className="btn-report btn-primary" onClick={handleSaveResult}>
-              Save Result
-            </button>
-          </>
+        {/* Normal value reference */}
+        {field.normalValue && (
+          <div style={{ fontSize: "13px", color: "#6b7280" }}>
+            Normal: {field.normalValue} {field.unit || ""}
+          </div>
         )}
+      </div>
+    ))}
+
+    <button className="btn-report btn-primary" onClick={handleSaveResult}>
+      Save Result
+    </button>
+  </>
+)}
 
       </div>
     </div>
