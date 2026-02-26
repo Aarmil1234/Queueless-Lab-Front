@@ -36,7 +36,8 @@ export default function Reports() {
     referredByDoctor: "",
     doctorContactNo: "",
     address: "",
-    mobileNumber: ""
+    mobileNumber: "",
+    city: "",
   });
 
   const calculateAge = (dob) => {
@@ -448,6 +449,9 @@ useEffect(() => {
 
                 <label>Address</label>
                 <textarea name="address" value={formData.address} onChange={handleChange} />
+
+                <label>City</label>
+                <input name="city" value={formData.city} onChange={handleChange} required />
               </div>
 
               <h3 style={{ marginTop: "25px" }}>Select Tests</h3>

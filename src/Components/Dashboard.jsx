@@ -20,21 +20,13 @@ const Dashboard = () => {
   const [totalPatients, setTotalPatients] = useState(0);
   const [testData, setTestData] = useState([]);
   const [doctorList, setDoctorList] = useState([]);
+  const [weeklyData, setWeeklyData] = useState([]);
+  const [cityData, setCityData] = useState([]);
 
   const [loadingTests, setLoadingTests] = useState(false);
   const [loadingDoctors, setLoadingDoctors] = useState(false);
-
-  const [weeklyData, setWeeklyData] = useState([]);
   const [loadingWeekly, setLoadingWeekly] = useState(false);
-
-  /* ------------------ STATIC CITY DATA (for now) ------------------ */
-
-  const cityData = [
-    { city: "Ahmedabad", reports: 420 },
-    { city: "Surat", reports: 310 },
-    { city: "Vadodara", reports: 210 },
-    { city: "Rajkot", reports: 308 },
-  ];
+  const [loadingCity, setLoadingCity] = useState(false);
 
   const COLORS = [
     "#6366f1",
@@ -45,38 +37,83 @@ const Dashboard = () => {
     "#ef4444",
   ];
 
-  /* ------------------ API CALLS ------------------ */
+  /* ------------------ SAFE DATA EXTRACTOR ------------------ */
+  const extractArray = (res) => {
+    if (Array.isArray(res)) return res;
+    if (Array.isArray(res?.data)) return res.data;
+    if (Array.isArray(res?.data?.data)) return res.data.data;
+    return [];
+  };
 
-  // TOTAL PATIENTS
- const fetchTotalPatients = async () => {
-  try {
-    const res = await apiRequest("get", "/api/dashboard/totalPatientCount");
+  /* ------------------ TOTAL PATIENTS ------------------ */
+  const fetchTotalPatients = async () => {
+    try {
+      const res = await apiRequest("get", "/api/dashboard/totalPatientCount");
 
-    const total =
-      res?.data?.data?.totalPatients ??
-      res?.data?.totalPatients ??
-      res?.totalPatients ??
-      0;
+      const total =
+        res?.data?.data?.totalPatients ??
+        res?.data?.totalPatients ??
+        res?.totalPatients ??
+        0;
 
-    setTotalPatients(Number(total));
+      setTotalPatients(Number(total));
+    } catch (err) {
+      console.error("Total patients fetch error:", err);
+      setTotalPatients(0);
+    }
+  };
 
-  } catch (err) {
-    console.error("Total patients fetch error:", err);
-    setTotalPatients(0);
-  }
-};
+  /* ------------------ TEST-WISE ------------------ */
+  const fetchTestWisePatients = async () => {
+    try {
+      setLoadingTests(true);
 
+      const res = await apiRequest("get", "/api/dashboard/testWisePatient");
 
-  // WEEKLY REPORTS (DYNAMIC)
+      console.log("TEST RAW:", res);
+
+      const apiData = extractArray(res);
+
+      const formatted = apiData.map(item => ({
+        name: item.testName,
+        value: Number(item.patientCount)
+      }));
+
+      setTestData(formatted);
+
+    } catch (err) {
+      console.error("Test-wise fetch error:", err);
+      setTestData([]);
+    } finally {
+      setLoadingTests(false);
+    }
+  };
+
+  /* ------------------ DOCTOR-WISE ------------------ */
+  const fetchDoctorWisePatients = async () => {
+    try {
+      setLoadingDoctors(true);
+
+      const res = await apiRequest("get", "/api/dashboard/doctorWisePatient");
+
+      const apiData = extractArray(res);
+      setDoctorList(apiData);
+
+    } catch (err) {
+      console.error("Doctor fetch error:", err);
+      setDoctorList([]);
+    } finally {
+      setLoadingDoctors(false);
+    }
+  };
+
+  /* ------------------ WEEKLY ------------------ */
   const fetchWeeklyReports = async () => {
     try {
       setLoadingWeekly(true);
 
       const res = await apiRequest("get", "/api/dashboard/weeklyReportData");
-      console.log("WEEKLY FULL RESPONSE:", res);
-
-      // 🔥 important mapping based on your backend response
-      const apiData = res?.data;
+      const apiData = res?.data || res;
 
       if (!apiData) {
         setWeeklyData([]);
@@ -103,51 +140,27 @@ const Dashboard = () => {
     }
   };
 
-  // TEST-WISE PATIENTS
-  const fetchTestWisePatients = async () => {
+  /* ------------------ CITY-WISE ------------------ */
+  const fetchCityWiseReports = async () => {
     try {
-      setLoadingTests(true);
+      setLoadingCity(true);
 
-      const res = await apiRequest("get", "/api/dashboard/testWisePatient");
-      console.log("FULL TEST API:", res);
+      const res = await apiRequest("get", "/api/dashboard/cityWiseReportData");
 
-      const apiData = res?.data?.data?.totalPatients;
-
-      if (!Array.isArray(apiData)) {
-        setTestData([]);
-        return;
-      }
+      const apiData = extractArray(res);
 
       const formatted = apiData.map(item => ({
-        name: item.testName,
-        value: Number(item.patientCount)
+        city: item.cityName || item.city || "-",
+        reports: Number(item.reportCount || item.totalReports || 0)
       }));
 
-      setTestData(formatted);
+      setCityData(formatted);
 
     } catch (err) {
-      console.error("Test-wise fetch error:", err);
-      setTestData([]);
+      console.error("City-wise fetch error:", err);
+      setCityData([]);
     } finally {
-      setLoadingTests(false);
-    }
-  };
-
-  // DOCTOR-WISE PATIENTS
-  const fetchDoctorWisePatients = async () => {
-    try {
-      setLoadingDoctors(true);
-
-      const res = await apiRequest("get", "/api/dashboard/doctorWisePatient");
-      console.log("DOCTOR LIST:", res);
-
-      setDoctorList(res?.data || []);
-
-    } catch (err) {
-      console.error("Doctor fetch error:", err);
-      setDoctorList([]);
-    } finally {
-      setLoadingDoctors(false);
+      setLoadingCity(false);
     }
   };
 
@@ -156,77 +169,62 @@ const Dashboard = () => {
     fetchTestWisePatients();
     fetchDoctorWisePatients();
     fetchWeeklyReports();
+    fetchCityWiseReports();
   }, []);
 
   /* ------------------ UI ------------------ */
 
   return (
-    <div
-      style={{
-        padding: "30px",
-        margin: "60px 0 0 280px",
-        background: "#f8f9fa",
-        minHeight: "100vh",
-      }}
-    >
-      {/* HEADER */}
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 28, margin: 0 }}>Dashboard</h1>
-        <p style={{ margin: 0, color: "#6b7280" }}>
-          Lab Analytics Overview
-        </p>
-      </div>
+    <div style={{ padding: "30px", margin: "60px 0 0 280px", background: "#f8f9fa", minHeight: "100vh" }}>
+      
+      <h1 style={{ marginBottom: 20 }}>Dashboard</h1>
 
-      {/* GRAPHS */}
+      {/* GRID */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))",
+          gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))",
           gap: 20,
         }}
       >
-        {/* TOTAL PATIENTS CARD */}
-        <div
-          style={{
-            background: "white",
-            padding: 24,
-            borderRadius: 12,
-            height: "150px",
-            boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)"
-          }}
-        >
-          <h3 style={{ margin: 0, color: "#6b7280" }}>Total Patients</h3>
-          <p style={{ fontSize: 36, fontWeight: 700, margin: "10px 0 0" }}>
-            {totalPatients}
-          </p>
+
+        {/* TOTAL */}
+        <div style={{ background: "white", padding: 24, borderRadius: 12 }}>
+          <h3>Total Patients</h3>
+          <p style={{ fontSize: 36, fontWeight: 700 }}>{totalPatients}</p>
         </div>
 
-        {/* CITY GRAPH */}
-        <div style={{ background: "white", padding: 20, borderRadius: 12, boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)" }}>
+        {/* CITY */}
+        <div style={{ background: "white", padding: 20, borderRadius: 12 }}>
           <h3>City-wise Reports</h3>
           <div style={{ height: 260 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={cityData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="city" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="reports" fill="#6366f1" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {loadingCity ? (
+              <p>Loading...</p>
+            ) : cityData.length === 0 ? (
+              <p>No city data</p>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={cityData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="city" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="reports" fill="#6366f1" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
 
-        {/* PIE CHART */}
-        <div style={{ background: "white", padding: 20, borderRadius: 12, boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)" }}>
+        {/* TEST PIE */}
+        <div style={{ background: "white", padding: 20, borderRadius: 12 }}>
           <h3>Test-wise Patient Distribution</h3>
-
-          {loadingTests ? (
-            <p>Loading test data...</p>
-          ) : testData.length === 0 ? (
-            <p>No test data available</p>
-          ) : (
-            <div style={{ height: 260 }}>
+          <div style={{ height: 260 }}>
+            {loadingTests ? (
+              <p>Loading...</p>
+            ) : testData.length === 0 ? (
+              <p>No test data available</p>
+            ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -246,8 +244,8 @@ const Dashboard = () => {
                   <Tooltip />
                 </PieChart>
               </ResponsiveContainer>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
@@ -256,7 +254,7 @@ const Dashboard = () => {
         <h3>Reference Doctors</h3>
 
         {loadingDoctors ? (
-          <p>Loading doctors...</p>
+          <p>Loading...</p>
         ) : doctorList.length === 0 ? (
           <p>No doctor data available</p>
         ) : (
@@ -283,41 +281,28 @@ const Dashboard = () => {
         )}
       </div>
 
-      {/* WEEKLY GRAPH */}
-      <div
-        style={{
-          background: "white",
-          padding: 20,
-          borderRadius: 12,
-          marginTop: 24,
-          boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)"
-        }}
-      >
+      {/* WEEKLY */}
+      <div style={{ background: "white", padding: 20, borderRadius: 12, marginTop: 24 }}>
         <h3>Weekly Reports</h3>
-
-        {loadingWeekly ? (
-          <p>Loading weekly reports...</p>
-        ) : !weeklyData || weeklyData.length === 0 ? (
-          <p>No weekly data available</p>
-        ) : (
-          <div style={{ height: 260 }}>
+        <div style={{ height: 260 }}>
+          {loadingWeekly ? (
+            <p>Loading...</p>
+          ) : weeklyData.length === 0 ? (
+            <p>No weekly data</p>
+          ) : (
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={weeklyData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="day" />
                 <YAxis />
                 <Tooltip />
-                <Line
-                  type="monotone"
-                  dataKey="reports"
-                  stroke="#10b981"
-                  strokeWidth={3}
-                />
+                <Line type="monotone" dataKey="reports" stroke="#10b981" strokeWidth={3} />
               </LineChart>
             </ResponsiveContainer>
-          </div>
-        )}
+          )}
+        </div>
       </div>
+
     </div>
   );
 };
