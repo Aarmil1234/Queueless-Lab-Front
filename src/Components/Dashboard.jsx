@@ -179,23 +179,23 @@ const Dashboard = () => {
       
       <h1 style={{ marginBottom: 20 }}>Dashboard</h1>
 
+          {/* TOTAL */}
+          <div style={{ background: "white", padding: 24, borderRadius: 12 , width: "430px", margin: "5px 0" , boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)" }}>
+            <h3>Total Patients</h3>
+            <p style={{ fontSize: 36, fontWeight: 700 }}>{totalPatients}</p>
+          </div>
       {/* GRID */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))",
+          gridTemplateColumns: "repeat(auto-fit,minmax(330px,1fr))",
           gap: 20,
         }}
       >
 
-        {/* TOTAL */}
-        <div style={{ background: "white", padding: 24, borderRadius: 12 }}>
-          <h3>Total Patients</h3>
-          <p style={{ fontSize: 36, fontWeight: 700 }}>{totalPatients}</p>
-        </div>
 
         {/* CITY */}
-        <div style={{ background: "white", padding: 20, borderRadius: 12 }}>
+        <div style={{ background: "white", padding: 20, borderRadius: 12 , boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)" }}>
           <h3>City-wise Reports</h3>
           <div style={{ height: 260 }}>
             {loadingCity ? (
@@ -217,7 +217,7 @@ const Dashboard = () => {
         </div>
 
         {/* TEST PIE */}
-        <div style={{ background: "white", padding: 20, borderRadius: 12 }}>
+        <div style={{ background: "white", padding: 20, borderRadius: 12, boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)" }}>
           <h3>Test-wise Patient Distribution</h3>
           <div style={{ height: 260 }}>
             {loadingTests ? (
@@ -282,7 +282,7 @@ const Dashboard = () => {
       </div>
 
       {/* WEEKLY */}
-      <div style={{ background: "white", padding: 20, borderRadius: 12, marginTop: 24 }}>
+      <div style={{ background: "white", padding: 20, borderRadius: 12, marginTop: 24 , boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)" }}>
         <h3>Weekly Reports</h3>
         <div style={{ height: 260 }}>
           {loadingWeekly ? (

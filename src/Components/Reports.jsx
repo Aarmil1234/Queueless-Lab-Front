@@ -5,7 +5,6 @@ import * as XLSX from "xlsx";
 
 export default function Reports() {
 
-  // screens: list → tests → add → addResult
   const [screen, setScreen] = useState("list");
 
   const [reports, setReports] = useState([]);
@@ -20,12 +19,9 @@ export default function Reports() {
 
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
-  const [excelTests, setExcelTests] = useState({});
 
-  const [resultData, setResultData] = useState({
-    result: "",
-    remark: ""
-  });
+  const [excelTests, setExcelTests] = useState({});
+  const [resultData, setResultData] = useState({});
 
   const [formData, setFormData] = useState({
     patientName: "",
@@ -40,52 +36,43 @@ export default function Reports() {
     city: "",
   });
 
+  // ================= AGE CALCULATOR =================
   const calculateAge = (dob) => {
-  if (!dob) {
-  setFormData({ ...formData, dateOfBirth: "", age: "", ageType: "year" });
-  return;
-}
 
-  const birthDate = new Date(dob);
-  const today = new Date();
+    if (!dob) return;
 
-  // total days difference
-  const diffTime = today.getTime() - birthDate.getTime();
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    const birthDate = new Date(dob);
+    const today = new Date();
 
-  // Days (0–29)
-  if (diffDays < 30) {
-    return { age: diffDays, ageType: "days" };
-  }
+    const diffTime = today.getTime() - birthDate.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
-  // Months (< 12 months)
-  const months =
-    (today.getFullYear() - birthDate.getFullYear()) * 12 +
-    (today.getMonth() - birthDate.getMonth()) -
-    (today.getDate() < birthDate.getDate() ? 1 : 0);
+    if (diffDays < 30) return { age: diffDays, ageType: "days" };
 
-  if (months < 12) {
-    return { age: months, ageType: "month" };
-  }
+    const months =
+      (today.getFullYear() - birthDate.getFullYear()) * 12 +
+      (today.getMonth() - birthDate.getMonth());
 
-  // Years
-  let years = today.getFullYear() - birthDate.getFullYear();
-  if (
-    today.getMonth() < birthDate.getMonth() ||
-    (today.getMonth() === birthDate.getMonth() &&
-      today.getDate() < birthDate.getDate())
-  ) {
-    years--;
-  }
+    if (months < 12) return { age: months, ageType: "month" };
 
-  return { age: years, ageType: "year" };
-};
+    let years = today.getFullYear() - birthDate.getFullYear();
 
+    if (
+      today.getMonth() < birthDate.getMonth() ||
+      (today.getMonth() === birthDate.getMonth() &&
+        today.getDate() < birthDate.getDate())
+    ) years--;
 
-  // ================= FETCH PENDING CASES =================
+    return { age: years, ageType: "year" };
+  };
+
+  // ================= FETCH PATIENT LIST =================
   const fetchReports = async () => {
+
     try {
+
       setListLoading(true);
+
       const res = await apiRequest("get", "/api/patient/pendingReportPatient");
 
       const data =
@@ -95,120 +82,157 @@ export default function Reports() {
         [];
 
       setReports(data);
+
     } catch (err) {
-      console.error("Failed to fetch pending patients", err);
+
+      console.error(err);
+
     } finally {
+
       setListLoading(false);
+
     }
+
   };
-
-  const fetchExcelTests = async () => {
-  try {
-    const response = await fetch("/Reportss.xlsx");
-    const data = await response.arrayBuffer();
-
-    const workbook = XLSX.read(data);
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-
-    const json = XLSX.utils.sheet_to_json(sheet);
-
-    // Convert into grouped structure
-    const formatted = {};
-
-    json.forEach((row) => {
-      const report = row["Reports"];
-      const sub = row["Sub categories"];
-      const normal = row["Normal values"];
-      const unit = row["Unit"];
-
-      if (!report) return;
-
-      if (!formatted[report]) formatted[report] = [];
-
-      formatted[report].push({
-        name: sub,
-        normalValue: normal,
-        unit: unit,
-      });
-    });
-
-    setExcelTests(formatted);
-  } catch (err) {
-    console.error("Excel read failed", err);
-  }
-};
-
-useEffect(() => {
-  fetchExcelTests();
-}, []);
 
   // ================= FETCH TEST MASTER =================
   const fetchTests = async () => {
+
     try {
+
       const res = await apiRequest("get", "/api/test");
+
       setTests(res?.data?.Data || res?.data || []);
+
     } catch (err) {
-      console.error("Failed to fetch tests", err);
+
+      console.error(err);
+
     }
+
+  };
+
+  // ================= FETCH EXCEL DATA =================
+  const fetchExcelTests = async () => {
+
+    try {
+
+      const response = await fetch("/Reportss.xlsx");
+
+      const data = await response.arrayBuffer();
+
+      const workbook = XLSX.read(data);
+
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+      const json = XLSX.utils.sheet_to_json(sheet);
+
+      const formatted = {};
+
+      json.forEach((row) => {
+
+        const report = row["Reports"];
+        const sub = row["Sub categories"];
+        const normal = row["Normal values"];
+        const unit = row["Unit"];
+
+        if (!report) return;
+
+        if (!formatted[report]) formatted[report] = [];
+
+        formatted[report].push({
+          name: sub,
+          normalValue: normal,
+          unit: unit
+        });
+
+      });
+
+      setExcelTests(formatted);
+
+    } catch (err) {
+
+      console.error("Excel read failed", err);
+
+    }
+
   };
 
   useEffect(() => {
     fetchReports();
+    fetchExcelTests();
   }, []);
 
-  // ================= OPEN PATIENT TEST LIST =================
+  // ================= NAVIGATION =================
   const openPatientTests = (patient) => {
     setSelectedPatient(patient);
     setScreen("tests");
   };
 
-  // ================= OPEN ADD PATIENT =================
   const openAddPatient = async () => {
     await fetchTests();
     setScreen("add");
   };
 
-  // ================= OPEN ADD RESULT =================
   const openAddResult = (test) => {
     setSelectedTest(test);
+    setResultData({});
     setScreen("addResult");
   };
 
   // ================= SAVE RESULT =================
   const handleSaveResult = async () => {
+
     try {
+
       setLoading(true);
 
       const payload = {
         caseId: selectedPatient.caseId,
         testKey: selectedTest.key,
-        result: resultData.result,
-        remark: resultData.remark
+        result: resultData
       };
 
       await apiRequest("post", "/api/report/addResult", payload);
 
-      setResultData({ result: "", remark: "" });
       setScreen("tests");
+
+      fetchReports();
+
     } catch (err) {
-      console.error("Failed to save result", err);
+
+      console.error(err);
+
     } finally {
+
       setLoading(false);
+
     }
+
   };
 
   // ================= ADD PATIENT =================
   const toggleTest = (key) => {
+
     setSelectedTests((prev) =>
-      prev.includes(key) ? prev.filter((t) => t !== key) : [...prev, key]
+      prev.includes(key)
+        ? prev.filter((t) => t !== key)
+        : [...prev, key]
     );
+
   };
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+
   };
 
   const handleSubmit = async (e) => {
+
     e.preventDefault();
 
     if (selectedTests.length === 0) {
@@ -218,6 +242,7 @@ useEffect(() => {
     }
 
     try {
+
       setLoading(true);
 
       const payload = {
@@ -232,126 +257,187 @@ useEffect(() => {
       setMessageType("success");
 
       setScreen("list");
+
       fetchReports();
+
     } catch (err) {
+
       setMessage("Failed to add patient");
       setMessageType("error");
+
     } finally {
+
       setLoading(false);
+
       setTimeout(() => setMessage(""), 3000);
+
     }
+
   };
 
   return (
+
     <div className="reports-wrapper">
       <div className="reports-container">
 
-        {/* ================= SCREEN 1: LIST ================= */}
+        {/* ================= PATIENT LIST ================= */}
         {screen === "list" && (
+
           <>
             <div className="reports-header">
+
               <h2>Reports</h2>
 
-              <button className="btn-report btn-primary" onClick={openAddPatient}>
+              <button
+                className="btn-report btn-primary"
+                onClick={openAddPatient}
+              >
                 <Plus size={18} /> Add Patient
               </button>
+
             </div>
 
             <table className="reports-table">
+
               <thead>
                 <tr>
-                  <th>Case ID</th>
                   <th>Patient Name</th>
-                  <th>Test Count</th>
-                  <th>Mobile Number</th>
+                  <th>Gender</th>
                   <th>Age</th>
+                  <th>City</th>
+                  <th>Mobile Number</th>
+                  <th>Test Count</th>
+                  <th>Date</th>
                   <th>Action</th>
                 </tr>
               </thead>
 
               <tbody>
+
                 {listLoading ? (
                   <tr>
-                    <td colSpan="4" style={{ textAlign: "center" }}>
-                      Loading...
-                    </td>
+                    <td colSpan="3">Loading...</td>
                   </tr>
                 ) : reports.length === 0 ? (
                   <tr>
-                    <td colSpan="4" style={{ textAlign: "center" }}>
-                      No pending cases
-                    </td>
+                    <td colSpan="3">No pending cases</td>
                   </tr>
                 ) : (
                   reports.map((r, idx) => (
+
                     <tr key={idx}>
-                      <td>{r.caseId}</td>
+
                       <td>{r.patientName}</td>
-                      <td>{r.tests?.length || 0}</td>
+                      <td>{r.gender}</td>
+                      <td>{r.age} {r.ageType}</td>
+                      <td>{r.city}</td>
                       <td>{r.mobileNumber}</td>
-                      <td>{r.age + " " + r.ageType}</td>
+                      <td>
+  {new Date(r.createdAt).toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  })}
+</td>
+
+                      <td>{r.tests?.length || 0}</td>
+
                       <td>
                         <button
                           className="btn-report btn-primary"
                           onClick={() => openPatientTests(r)}
                         >
-                          Add Report
+                          View Tests
                         </button>
                       </td>
+
                     </tr>
+
                   ))
                 )}
+
               </tbody>
+
             </table>
+
           </>
         )}
 
-        {/* ================= SCREEN 2: TEST LIST ================= */}
+        {/* ================= TEST LIST ================= */}
         {screen === "tests" && selectedPatient && (
+
           <>
             <div className="reports-header">
-              <h2>{selectedPatient.patientName} - Tests</h2>
 
-              <button className="btn-report btn-secondary" onClick={() => setScreen("list")}>
+              <h2>
+                {selectedPatient.patientName} ({selectedPatient.caseId})
+              </h2>
+
+              <button
+                className="btn-report btn-secondary"
+                onClick={() => setScreen("list")}
+              >
                 <ArrowLeft size={18} /> Back
               </button>
+
             </div>
 
             <table className="reports-table">
+
               <thead>
                 <tr>
                   <th>Test Name</th>
+                  <th>Age</th>
                   <th>Status</th>
-                  <th>Add Result</th>
+                  <th>Enter Result</th>
                 </tr>
               </thead>
 
               <tbody>
+
                 {selectedPatient.tests?.map((test, idx) => {
+
                   const testName =
                     typeof test === "string"
                       ? test
                       : test?.name || test?.testName || "-";
 
                   return (
+
                     <tr key={idx}>
+
                       <td>{testName}</td>
-                      <td>{test?.isCompleted ? "Completed" : "Pending"}</td>
+                      <td>{selectedPatient.age} {selectedPatient.ageType}</td>
+
                       <td>
+                        {test?.isCompleted ? "Completed" : "Pending"}
+                      </td>
+
+                      <td>
+
                         {!test?.isCompleted && (
+
                           <button
                             className="btn-report btn-success"
                             onClick={() => openAddResult(test)}
                           >
-                            Add Result
+                            Enter Result
                           </button>
+
                         )}
+
                       </td>
+
                     </tr>
+
                   );
+
                 })}
+
               </tbody>
+
             </table>
+
           </>
         )}
 
@@ -491,45 +577,63 @@ useEffect(() => {
           </>
         )}
 
-        {/* ================= SCREEN 4: ADD RESULT ================= */}
+        {/* ================= ADD RESULT ================= */}
         {screen === "addResult" && selectedTest && (
-  <>
-    <div className="reports-header">
-      <h2>Add Result - {selectedTest.name}</h2>
-    </div>
 
-    {excelTests[selectedTest.name]?.map((field, index) => (
-      <div key={index} style={{ marginBottom: "15px" }}>
-        <label>{field.name}</label>
+          <>
+            <div className="reports-header">
 
-        {/* Observed value input */}
-        <input
-          type="text"
-          placeholder="Observed Value"
-          onChange={(e) =>
-            setResultData((prev) => ({
-              ...prev,
-              [field.name]: e.target.value
-            }))
-          }
-        />
+              <h2>Add Result - {selectedTest.name}</h2>
 
-        {/* Normal value reference */}
-        {field.normalValue && (
-          <div style={{ fontSize: "13px", color: "#6b7280" }}>
-            Normal: {field.normalValue} {field.unit || ""}
-          </div>
+              <button
+                className="btn-report btn-secondary"
+                onClick={() => setScreen("tests")}
+              >
+                <ArrowLeft size={18} /> Back
+              </button>
+
+            </div>
+
+            {(excelTests[selectedTest.name] || []).map((field, index) => (
+
+              <div key={index} style={{ marginBottom: "15px" }}>
+
+                <label>{field.name}</label>
+
+                <input
+                  type="text"
+                  placeholder="Observed Value"
+                  onChange={(e) =>
+                    setResultData((prev) => ({
+                      ...prev,
+                      [field.name]: e.target.value
+                    }))
+                  }
+                />
+
+                {field.normalValue && (
+                  <div style={{ fontSize: "13px", color: "#6b7280" }}>
+                    Normal: {field.normalValue} {field.unit || ""}
+                  </div>
+                )}
+
+              </div>
+
+            ))}
+
+            <button
+              className="btn-report btn-primary"
+              onClick={handleSaveResult}
+            >
+              Save Result
+            </button>
+
+          </>
         )}
-      </div>
-    ))}
-
-    <button className="btn-report btn-primary" onClick={handleSaveResult}>
-      Save Result
-    </button>
-  </>
-)}
 
       </div>
     </div>
+
   );
+
 }
