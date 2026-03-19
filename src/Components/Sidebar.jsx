@@ -65,6 +65,7 @@ const Sidebar = ({ collapsed }) => {
       icon: SlidersHorizontal,
       children: [
         { path: "/addparam", label: "Manage Parameter" },
+        { path: "/addsubparam", label: "Manage Sub Parameter" },
         { path: "/addrange", label: "Manage Range" },
       ],
     },
