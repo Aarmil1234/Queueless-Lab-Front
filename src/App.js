@@ -25,6 +25,8 @@ import AddParameterRange from "./Components/AddRange.jsx";
 import AddUriaReport from "./Components/AddUriaReport.jsx";
 import AddUrineReport from "./Components/AddUriaReport.jsx";
 import AddSubParam from "./Components/AddSubParam.jsx";
+import ParameterRangeManager from "./Components/AddRange.jsx";
+import SubParameterManager from "./Components/AddSubParam.jsx";
 
 const AppRoutes = () => {
   const [collapsed, setCollapsed] = useState(false);
@@ -77,7 +79,7 @@ const AppRoutes = () => {
           <Route path="/history" element={<ReportHistory />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/addparam" element={<AddParameterPage />} />
-          <Route path="/addsubparam" element={<AddSubParam />} />
+          <Route path="/addsubparam" element={<SubParameterManager />} />
           <Route path="/addrange" element={<AddParameterRange />} />
           <Route path="/uriareport" element={<AddUrineReport />} />
 

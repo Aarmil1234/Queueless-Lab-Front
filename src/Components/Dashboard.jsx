@@ -119,7 +119,7 @@ const Dashboard = () => {
         setWeeklyData([]);
         return;
       }
-
+ 
       const formatted = [
         { day: "Mon", reports: Number(apiData.monday || 0) },
         { day: "Tue", reports: Number(apiData.tuesday || 0) },
