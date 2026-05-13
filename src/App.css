@@ -141,6 +141,7 @@ body {
 .btn-secondary {
   background-color: #e5e7eb;
   color: #1f2937;
+  border: 1px solid #d1d5db;
 }
 
 .btn-secondary:hover {
