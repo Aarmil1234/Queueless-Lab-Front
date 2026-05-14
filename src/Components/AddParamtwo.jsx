@@ -52,7 +52,7 @@ export default function AddParameterPage() {
   // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchParameters = async () => {
     try {
-      const res = await apiRequest("get", "/api/parameter/");
+      const res = await apiRequest("get", "/api/parameter");
       setParameters(res?.data || []);
     } catch (err) { console.error(err); }
   };

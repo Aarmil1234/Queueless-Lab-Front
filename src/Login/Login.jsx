@@ -29,9 +29,6 @@ const Login = () => {
         false
       );
 
-      console.log("FULL LOGIN RESPONSE:", result);
-
-      // detect success from nested response
       const success =
         result?.data?.success ||
         result?.data?.data?.success;
@@ -45,17 +42,16 @@ const Login = () => {
           result?.data?.data?.data?.user ||
           result?.data?.data?.user;
 
-        // store token & user
-        localStorage.setItem("token", token);
-        localStorage.setItem("user", JSON.stringify(user));
+          console.log("token" , token);
 
-        // IMPORTANT: set hospitalId cookie (App.jsx depends on this)
+        sessionStorage.setItem("token", token);
+        sessionStorage.setItem("user", JSON.stringify(user));
+
         const expires = new Date();
         expires.setDate(expires.getDate() + 7);
 
         document.cookie = `hospitalId=${user.id}; expires=${expires.toUTCString()}; path=/`;
 
-        // redirect to dashboard route "/"
         navigate('/');
         window.location.reload();
         return;

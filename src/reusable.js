@@ -6,16 +6,19 @@ const axiosInstance = axios.create({
   timeout: 60000,
 });
 
-export const apiRequest = async (method, url, data = {}) => {
-  try {
-    const res = await axiosInstance({
-      method,
-      url,
-      data,
-    });
+export const apiRequest = async (method, url, data = null, isAuth = true) => {
+  const token = sessionStorage.getItem("token");
 
-    return res.data;
-  } catch (error) {
-    throw error;
+  const config = {
+    method,
+    url,
+    headers: {},
+    data,
+  };
+
+  if (isAuth && token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
+
+  return axios(config);
 };
