@@ -51,11 +51,16 @@ export default function AddParameterPage() {
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchParameters = async () => {
-    try {
-      const res = await apiRequest("get", "/api/parameter");
-      setParameters(res?.data || []);
-    } catch (err) { console.error(err); }
-  };
+  try {
+    const res = await apiRequest("get", "/api/parameter");
+
+    const list = res?.data?.data;
+
+    setParameters(Array.isArray(list) ? list : []);
+  } catch (err) {
+    console.error(err);
+  }
+};
 
   useEffect(() => { fetchParameters(); }, []);
 
@@ -73,7 +78,7 @@ export default function AddParameterPage() {
     });
     if (!result.isConfirmed) return;
     try {
-      await apiRequest("delete", `api/parameter/${id}`);
+      await apiRequest("delete", `/api/parameter/${id}`);
       Swal.fire("Deleted!", "Parameter removed.", "success");
       fetchParameters();
     } catch { Swal.fire("Error", "Failed to delete", "error"); }
@@ -92,10 +97,10 @@ export default function AddParameterPage() {
     const payload = { code, name, category, type: "NUMERIC", unit };
     try {
       if (isEditing) {
-        await apiRequest("put", `api/parameter/${editId}`, payload);
+        await apiRequest("put", `/api/parameter/${editId}`, payload);
         setMessage("Parameter updated successfully!");
       } else {
-        await apiRequest("post", "api/parameter/add", payload);
+        await apiRequest("post", "/api/parameter/add", payload);
         setMessage("Parameter added successfully!");
       }
       setMessageType("success");

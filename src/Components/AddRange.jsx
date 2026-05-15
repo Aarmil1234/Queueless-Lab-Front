@@ -263,14 +263,14 @@ export default function ParameterRangeManager() {
   const fetchParameters = async () => {
     try {
       const res = await apiRequest("get", "/api/parameter/");
-      setParameters(res?.data?.data || res?.data || []);
+      setParameters(res?.data?.data?.data || res?.data?.data || []);
     } catch (err) { console.error(err); }
   };
 
   const fetchSubParameters = async (id) => {
     try {
       const res = await apiRequest("get", `/api/parameter/subCategory/${id}`);
-      const data = res?.data?.data || res?.data || [];
+      const data = res?.data?.data?.data || res?.data?.data || [];
       setSubParameters(Array.isArray(data) ? data : []);
     } catch (err) { console.error(err); }
   };
@@ -320,7 +320,7 @@ export default function ParameterRangeManager() {
       `/api/parameter/subCategory/${r.parameterId}`
     );
 
-    const data = res?.data?.data || res?.data || [];
+    const data = res?.data?.data?.data || res?.data?.data || [];
     setSubParameters(Array.isArray(data) ? data : []);
 
     // ✅ Set after loading

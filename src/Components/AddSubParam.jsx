@@ -47,14 +47,14 @@ export default function SubParameterManager() {
   const fetchParameters = async () => {
     try {
       const res = await apiRequest("get", "/api/parameter/");
-      setParameters(res?.data || []);
+      setParameters(res?.data?.data || []);
     } catch (err) { console.error(err); }
   };
 
   const fetchSubParams = async (id) => {
     try {
       const res = await apiRequest("get", `/api/parameter/subCategory/${id}`);
-      setSubParams(res?.data || []);
+      setSubParams(res?.data?.data || []);
     } catch { setSubParams([]); }
   };
 

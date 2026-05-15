@@ -22,58 +22,42 @@ const Login = () => {
     setError('');
 
     try {
-      const result = await apiRequest(
+      const res = await apiRequest(
         'post',
         '/api/auth/login',
-        { labMobileNumber: String(mobile).trim() },
-        false
+        { labMobileNumber: mobile.trim() }
       );
 
-      const success =
-        result?.data?.success ||
-        result?.data?.data?.success;
+      console.log("LOGIN RESPONSE:", res.data);
 
-      if (success) {
-        const token =
-          result?.data?.data?.data?.token ||
-          result?.data?.data?.token;
+      const payload = res?.data?.data?.data;
 
-        const user =
-          result?.data?.data?.data?.user ||
-          result?.data?.data?.user;
+      const token = payload?.token;
+      const user = payload?.user;
 
-          console.log("token" , token);
-
+      if (token) {
+        // ✅ store session
         sessionStorage.setItem("token", token);
         sessionStorage.setItem("user", JSON.stringify(user));
 
+        // ✅ optional cookie
         const expires = new Date();
         expires.setDate(expires.getDate() + 7);
+        document.cookie = `hospitalId=${user?.id}; expires=${expires.toUTCString()}; path=/`;
 
-        document.cookie = `hospitalId=${user.id}; expires=${expires.toUTCString()}; path=/`;
-
+        // ✅ redirect
         navigate('/');
-        window.location.reload();
-        return;
+      } else {
+        setError("Invalid mobile number");
       }
 
-      // show backend message
-      const backendMessage =
-        result?.data?.message ||
-        result?.data?.data?.message ||
-        "Mobile number not registered";
-
-      setError(backendMessage);
-
     } catch (err) {
-      console.error("LOGIN ERROR:", err.response?.data || err.message);
+      console.error("LOGIN ERROR:", err?.response?.data || err.message);
 
-      const backendError =
+      setError(
         err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        "Unable to login. Try again.";
-
-      setError(backendError);
+        "Login failed"
+      );
     } finally {
       setIsLoading(false);
     }
@@ -84,10 +68,8 @@ const Login = () => {
       <div className="registration-container">
         <div className="form-card auth-container">
 
-          <div className="form-header py-3 p-2">
-            <div className="d-flex justify-content-center text-center w-100">
-              <h1 className="brand-title">Queueless</h1>
-            </div>
+          <div className="form-header py-3 p-2 text-center">
+            <h1 className="brand-title">Queueless</h1>
             <h2>Lab Login</h2>
           </div>
 
@@ -95,7 +77,7 @@ const Login = () => {
             <form onSubmit={handleSubmit}>
 
               <div className="form-group">
-                <label className="form-label">Lab Mobile Number</label>
+                <label>Lab Mobile Number</label>
                 <input
                   type="tel"
                   value={mobile}
@@ -107,12 +89,12 @@ const Login = () => {
               </div>
 
               {error && (
-                <p className="text-danger mt-2 text-center">
+                <p className="text-danger text-center mt-2">
                   {error}
                 </p>
               )}
 
-              <div className="button-group center y mt-3">
+              <div className="text-center mt-3">
                 <button
                   type="submit"
                   className="btn-custom btn-primary"
