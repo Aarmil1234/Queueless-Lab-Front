@@ -97,20 +97,18 @@ export default function Reports() {
 
   // ================= FETCH TEST MASTER =================
   const fetchTests = async () => {
+  try {
+    const res = await apiRequest("get", "/api/parameter");
 
-    try {
+    console.log("TEST API RESPONSE:", res.data);
 
-      const res = await apiRequest("get", "/api/test");
+    const list = res?.data?.data;
 
-      setTests(res?.data?.Data || res?.data || []);
-
-    } catch (err) {
-
-      console.error(err);
-
-    }
-
-  };
+    setTests(Array.isArray(list) ? list : []);
+  } catch (err) {
+    console.error(err);
+  }
+};
 
   // ================= FETCH EXCEL DATA =================
   const fetchExcelTests = async () => {
@@ -546,7 +544,7 @@ export default function Reports() {
                 gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
                 gap: "12px"
               }}>
-                {tests.map((test) => (
+                {Array.isArray(tests) && tests.map((test) => (
                   <label key={test.key} style={{
                     display: "flex",
                     alignItems: "center",
