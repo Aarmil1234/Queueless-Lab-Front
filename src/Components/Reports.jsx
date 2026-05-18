@@ -95,7 +95,6 @@ export default function Reports() {
 
   };
 
-  // ================= FETCH TEST MASTER =================
   const fetchTests = async () => {
   try {
     const res = await apiRequest("get", "/api/parameter");
@@ -110,7 +109,7 @@ export default function Reports() {
   }
 };
 
-  // ================= FETCH EXCEL DATA =================
+
   const fetchExcelTests = async () => {
 
     try {

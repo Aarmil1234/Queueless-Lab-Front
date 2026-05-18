@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import '../Scss/Style.scss';
 import { apiRequest } from '../reusable';
 import { useNavigate } from 'react-router-dom';
+import Swal from "sweetalert2";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -54,10 +55,16 @@ const Login = () => {
     } catch (err) {
       console.error("LOGIN ERROR:", err?.response?.data || err.message);
 
-      setError(
-        err?.response?.data?.message ||
-        "Login failed"
-      );
+await Swal.fire({
+        icon: "warning",
+        title: "Login Failed",
+        text: err.message
+          ? "Invalid Mobile Number"
+          : "Login Failed2",
+        confirmButtonText: "OK",
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+      });
     } finally {
       setIsLoading(false);
     }

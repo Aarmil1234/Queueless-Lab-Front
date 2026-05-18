@@ -28,15 +28,20 @@ axiosInstance.interceptors.response.use(
   async (error) => {
     const status = error?.response?.status;
     const message = error?.response?.data?.message || "";
+    const url = error?.config?.url || "";
+
+    // ✅ 🚫 SKIP LOGIN API
+    if (url.includes("/api/auth/login")) {
+      return Promise.reject(error);
+    }
 
     if (status === 401 && !isShowingSessionPopup) {
-      isShowingSessionPopup = true; // ✅ block duplicate triggers
+      isShowingSessionPopup = true;
 
       const isMultiLogin =
         message.toLowerCase().includes("device") ||
         message.toLowerCase().includes("logged in elsewhere");
 
-      // ✅ WAIT until user clicks OK
       await Swal.fire({
         icon: "warning",
         title: "Session Ended",
@@ -48,9 +53,7 @@ axiosInstance.interceptors.response.use(
         allowEscapeKey: false,
       });
 
-      // ✅ AFTER clicking OK
       sessionStorage.clear();
-
       window.location.href = "/login";
     }
 
