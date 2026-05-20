@@ -20,7 +20,6 @@ export default function Reports() {
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
 
-  const [excelTests, setExcelTests] = useState({});
   const [resultData, setResultData] = useState({});
 
   const [formData, setFormData] = useState({
@@ -110,54 +109,8 @@ export default function Reports() {
 };
 
 
-  const fetchExcelTests = async () => {
-
-    try {
-
-      const response = await fetch("/Reportss.xlsx");
-
-      const data = await response.arrayBuffer();
-
-      const workbook = XLSX.read(data);
-
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-
-      const json = XLSX.utils.sheet_to_json(sheet);
-
-      const formatted = {};
-
-      json.forEach((row) => {
-
-        const report = row["Reports"];
-        const sub = row["Sub categories"];
-        const normal = row["Normal values"];
-        const unit = row["Unit"];
-
-        if (!report) return;
-
-        if (!formatted[report]) formatted[report] = [];
-
-        formatted[report].push({
-          name: sub,
-          normalValue: normal,
-          unit: unit
-        });
-
-      });
-
-      setExcelTests(formatted);
-
-    } catch (err) {
-
-      console.error("Excel read failed", err);
-
-    }
-
-  };
-
   useEffect(() => {
     fetchReports();
-    fetchExcelTests();
   }, []);
 
   // ================= NAVIGATION =================
@@ -245,7 +198,7 @@ export default function Reports() {
     try {
 
       setLoading(true);
-
+      const finalTests = [...selectedTests]; 
       const payload = {
   patientName: formData.patientName,
   gender: formData.gender,
@@ -258,13 +211,10 @@ export default function Reports() {
   mobileNumber: formData.mobileNumber,
   city: formData.city,
 
-  // ✅ FIXED
-  tests: selectedTests.map((id) => ({
-    tests: selectedTest
-  }))
-  
+  tests: finalTests
 };
-console.log(selectedTest)
+console.log("FINAL TESTS 👉", finalTests);
+console.log("FINAL PAYLOAD 👉", payload);
 
 console.log("FINAL PAYLOAD 👉", payload);
 
@@ -330,8 +280,8 @@ console.log("FINAL PAYLOAD 👉", payload);
                   <th>Age</th>
                   <th>City</th>
                   <th>Mobile Number</th>
-                  <th>Test Count</th>
                   <th>Date</th>
+                  <th>Test Count</th>
                   <th>Action</th>
                 </tr>
               </thead>
@@ -617,33 +567,6 @@ console.log("FINAL PAYLOAD 👉", payload);
               </button>
 
             </div>
-
-            {(excelTests[selectedTest.name] || []).map((field, index) => (
-
-              <div key={index} style={{ marginBottom: "15px" }}>
-
-                <label>{field.name}</label>
-
-                <input
-                  type="text"
-                  placeholder="Observed Value"
-                  onChange={(e) =>
-                    setResultData((prev) => ({
-                      ...prev,
-                      [field.name]: e.target.value
-                    }))
-                  }
-                />
-
-                {field.normalValue && (
-                  <div style={{ fontSize: "13px", color: "#6b7280" }}>
-                    Normal: {field.normalValue} {field.unit || ""}
-                  </div>
-                )}
-
-              </div>
-
-            ))}
 
             <button
               className="btn-report btn-primary"
