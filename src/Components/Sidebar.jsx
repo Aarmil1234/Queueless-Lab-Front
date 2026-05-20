@@ -16,36 +16,13 @@ import { apiRequest } from "../reusable";
 
 const Sidebar = ({ collapsed }) => {
   const location = useLocation();
-  const [hospitalName, setHospitalName] = useState("Lab");
+  const [hospitalName, setHospitalName] = useState("");
   const [openDropdown, setOpenDropdown] = useState(null);
 
-  useEffect(() => {
-    const fetchHospitalName = async () => {
-      try {
-        const hospitalId = document.cookie
-          .split("; ")
-          .find((row) => row.startsWith("hospitalId="))
-          ?.split("=")[1];
-
-        if (!hospitalId) return;
-
-        const response = await apiRequest(
-          "post",
-          "admin/gethospitals",
-          { hospitalId },
-          false
-        );
-
-        if (response?.data?.name) {
-          setHospitalName(response.data.name);
-        }
-      } catch (error) {
-        console.error("Failed to fetch hospital name:", error);
-      }
-    };
-
-    fetchHospitalName();
-  }, []);
+useEffect(() => {
+  const name = sessionStorage.getItem("hospitalName");
+  setHospitalName(name || "My Hospital");
+}, []);
 
   // Auto-open settings dropdown when inside its routes
   useEffect(() => {

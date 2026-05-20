@@ -39,7 +39,11 @@ const Login = () => {
       if (token) {
         // ✅ store session
         sessionStorage.setItem("token", token);
-        sessionStorage.setItem("user", JSON.stringify(user));
+sessionStorage.setItem("user", JSON.stringify(user));
+
+// ✅ ADD THESE
+sessionStorage.setItem("ownerName", user?.ownerName);
+sessionStorage.setItem("hospitalName", user?.hospitalName || user?.labName);
 
         // ✅ optional cookie
         const expires = new Date();
