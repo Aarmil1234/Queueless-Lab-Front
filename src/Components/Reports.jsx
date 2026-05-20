@@ -185,10 +185,12 @@ export default function Reports() {
       setLoading(true);
 
       const payload = {
-        caseId: selectedPatient.caseId,
-        testKey: selectedTest.key,
-        result: resultData
-      };
+  ...formData,
+  age: Number(formData.age),
+  tests: selectedTests.map((id) => ({
+    tests: selectedTests
+  }))
+};
 
       await apiRequest("post", "/api/report/addResult", payload);
 
@@ -197,10 +199,12 @@ export default function Reports() {
       fetchReports();
 
     } catch (err) {
+  console.error("FULL ERROR:", err);
+  console.error("BACKEND ERROR:", err.response?.data);
 
-      console.error(err);
-
-    } finally {
+  setMessage(err.response?.data?.message || "Failed to add patient");
+  setMessageType("error");
+} finally {
 
       setLoading(false);
 
@@ -243,10 +247,26 @@ export default function Reports() {
       setLoading(true);
 
       const payload = {
-        ...formData,
-        age: Number(formData.age),
-        tests: selectedTests
-      };
+  patientName: formData.patientName,
+  gender: formData.gender,
+  dateOfBirth: formData.dateOfBirth,
+  age: Number(formData.age),
+  ageType: formData.ageType,
+  referredByDoctor: formData.referredByDoctor,
+  doctorContactNo: formData.doctorContactNo,
+  address: formData.address,
+  mobileNumber: formData.mobileNumber,
+  city: formData.city,
+
+  // ✅ FIXED
+  tests: selectedTests.map((id) => ({
+    tests: selectedTest
+  }))
+  
+};
+console.log(selectedTest)
+
+console.log("FINAL PAYLOAD 👉", payload);
 
       await apiRequest("post", "/api/patient", payload);
 
@@ -258,11 +278,18 @@ export default function Reports() {
       fetchReports();
 
     } catch (err) {
+  console.error("FULL ERROR:", err);
 
-      setMessage("Failed to add patient");
-      setMessageType("error");
+  console.log("REAL ERROR 👉", err.response?.data?.data);
 
-    } finally {
+  setMessage(
+    err.response?.data?.data?.message ||
+    err.response?.data?.message ||
+    "Failed to add patient"
+  );
+
+  setMessageType("error");
+} finally {
 
       setLoading(false);
 
@@ -544,7 +571,7 @@ export default function Reports() {
                 gap: "12px"
               }}>
                 {Array.isArray(tests) && tests.map((test) => (
-                  <label key={test.key} style={{
+                  <label key={test.code} style={{
                     display: "flex",
                     alignItems: "center",
                     gap: "8px",
@@ -554,8 +581,8 @@ export default function Reports() {
                   }}>
                     <input
                       type="checkbox"
-                      checked={selectedTests.includes(test.key)}
-                      onChange={() => toggleTest(test.key)}
+                      checked={selectedTests.includes(test.code)}
+                      onChange={() => toggleTest(test.code)}
                     />
                     {test.name}
                   </label>
