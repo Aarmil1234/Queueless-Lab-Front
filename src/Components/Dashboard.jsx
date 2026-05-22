@@ -46,22 +46,21 @@ const Dashboard = () => {
   };
 
   /* ------------------ TOTAL PATIENTS ------------------ */
-  const fetchTotalPatients = async () => {
-    try {
-      const res = await apiRequest("get", "/api/dashboard/totalPatientCount");
+ const fetchTotalPatients = async () => {
+  try {
+    const res = await apiRequest("get", "/api/dashboard/totalPatientCount");
 
-      const total =
-        res?.data?.data?.totalPatients ??
-        res?.data?.totalPatients ??
-        res?.totalPatients ??
-        0;
+    const total =
+  res?.data?.data?.totalPatients ??
+  res?.data?.data?.data?.totalPatients ??
+  0;
 
-      setTotalPatients(Number(total));
-    } catch (err) {
-      console.error("Total patients fetch error:", err);
-      setTotalPatients(0);
-    }
-  };
+setTotalPatients(Number(total));
+
+  } catch (err) {
+    setTotalPatients(0);
+  }
+};
 
   /* ------------------ TEST-WISE ------------------ */
   const fetchTestWisePatients = async () => {
@@ -109,36 +108,40 @@ const Dashboard = () => {
 
   /* ------------------ WEEKLY ------------------ */
   const fetchWeeklyReports = async () => {
-    try {
-      setLoadingWeekly(true);
+  try {
+    setLoadingWeekly(true);
 
-      const res = await apiRequest("get", "/api/dashboard/weeklyReportData");
-      const apiData = res?.data || res;
+    const res = await apiRequest("get", "/api/dashboard/weeklyReportData");
 
-      if (!apiData) {
-        setWeeklyData([]);
-        return;
-      }
- 
-      const formatted = [
-        { day: "Mon", reports: Number(apiData.monday || 0) },
-        { day: "Tue", reports: Number(apiData.tuesday || 0) },
-        { day: "Wed", reports: Number(apiData.wednesday || 0) },
-        { day: "Thu", reports: Number(apiData.thursday || 0) },
-        { day: "Fri", reports: Number(apiData.friday || 0) },
-        { day: "Sat", reports: Number(apiData.saturday || 0) },
-        { day: "Sun", reports: Number(apiData.sunday || 0) },
-      ];
+    console.log("WEEKLY API 👉", res.data);
 
-      setWeeklyData(formatted);
+    // ✅ correct data extraction
+    const apiData = res?.data?.data;
 
-    } catch (err) {
-      console.error("Weekly fetch error:", err);
+    if (!apiData) {
       setWeeklyData([]);
-    } finally {
-      setLoadingWeekly(false);
+      return;
     }
-  };
+
+    const formatted = [
+      { day: "Mon", reports: Number(apiData.monday || 0) },
+      { day: "Tue", reports: Number(apiData.tuesday || 0) },
+      { day: "Wed", reports: Number(apiData.wednesday || 0) },
+      { day: "Thu", reports: Number(apiData.thursday || 0) },
+      { day: "Fri", reports: Number(apiData.friday || 0) },
+      { day: "Sat", reports: Number(apiData.saturday || 0) },
+      { day: "Sun", reports: Number(apiData.sunday || 0) },
+    ];
+
+    setWeeklyData(formatted);
+
+  } catch (err) {
+    console.error("Weekly fetch error:", err);
+    setWeeklyData([]);
+  } finally {
+    setLoadingWeekly(false);
+  }
+};
 
   /* ------------------ CITY-WISE ------------------ */
   const fetchCityWiseReports = async () => {

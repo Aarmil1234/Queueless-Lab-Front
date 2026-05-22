@@ -21,7 +21,7 @@ const Sidebar = ({ collapsed }) => {
 
 useEffect(() => {
   const name = sessionStorage.getItem("hospitalName");
-  setHospitalName(name || "My Hospital");
+  setHospitalName(name || "My Lab");
 }, []);
 
   // Auto-open settings dropdown when inside its routes
