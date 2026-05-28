@@ -106,7 +106,6 @@ setTotalPatients(Number(total));
     }
   };
 
-  /* ------------------ WEEKLY ------------------ */
   const fetchWeeklyReports = async () => {
   try {
     setLoadingWeekly(true);
@@ -115,7 +114,6 @@ setTotalPatients(Number(total));
 
     console.log("WEEKLY API 👉", res.data);
 
-    // ✅ correct data extraction
     const apiData = res?.data?.data;
 
     if (!apiData) {
@@ -196,8 +194,6 @@ setTotalPatients(Number(total));
         }}
       >
 
-
-        {/* CITY */}
         <div style={{ background: "white", padding: 20, borderRadius: 12 , boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)" }}>
           <h3>City-wise Reports</h3>
           <div style={{ height: 260 }}>

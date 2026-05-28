@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { apiRequest } from "../reusable";
 import { Plus, ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
-import * as XLSX from "xlsx";
 
 export default function Reports() {
 
@@ -11,8 +10,11 @@ export default function Reports() {
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [selectedTest, setSelectedTest] = useState(null);
 
+  const [selectedReportId, setSelectedReportId] = useState(null);
+
   const [tests, setTests] = useState([]);
   const [selectedTests, setSelectedTests] = useState([]);
+  const [selectedTestId, setSelectedTestId] = useState(null);
 
   const [listLoading, setListLoading] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -20,7 +22,19 @@ export default function Reports() {
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
 
-  const [resultData, setResultData] = useState({});
+  const [resultData, setResultData] = useState({
+    hemoglobin: "",
+    unit: "g/dL",
+    isCritical: false,
+    referenceRange: {
+      min: "",
+      max: ""
+    },
+    remarks: "",
+    previousValues: [],
+    collectedAt: "",
+    verifiedBy: null
+  });
 
   const [formData, setFormData] = useState({
     patientName: "",
@@ -95,18 +109,18 @@ export default function Reports() {
   };
 
   const fetchTests = async () => {
-  try {
-    const res = await apiRequest("get", "/api/parameter");
+    try {
+      const res = await apiRequest("get", "/api/parameter");
 
-    console.log("TEST API RESPONSE:", res.data);
+      console.log("TEST API RESPONSE:", res.data);
 
-    const list = res?.data?.data;
+      const list = res?.data?.data;
 
-    setTests(Array.isArray(list) ? list : []);
-  } catch (err) {
-    console.error(err);
-  }
-};
+      setTests(Array.isArray(list) ? list : []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
 
   useEffect(() => {
@@ -124,11 +138,12 @@ export default function Reports() {
     setScreen("add");
   };
 
-  const openAddResult = (test) => {
-    setSelectedTest(test);
-    setResultData({});
-    setScreen("addResult");
-  };
+ const openAddResult = (reportId, testId) => {
+  setSelectedReportId(reportId);
+  setSelectedTestId(testId);
+  setResultData({});
+  setScreen("addResult");
+};
 
   // ================= SAVE RESULT =================
   const handleSaveResult = async () => {
@@ -137,13 +152,15 @@ export default function Reports() {
 
       setLoading(true);
 
+
       const payload = {
-  ...formData,
-  age: Number(formData.age),
-  tests: selectedTests.map((id) => ({
-    tests: selectedTests
-  }))
+  reportId: selectedReportId,
+  testId: selectedTestId,
+  testResult: resultData
 };
+
+      console.log("SAVE PAYLOAD 👉", payload);
+
 
       await apiRequest("post", "/api/report/addResult", payload);
 
@@ -152,12 +169,12 @@ export default function Reports() {
       fetchReports();
 
     } catch (err) {
-  console.error("FULL ERROR:", err);
-  console.error("BACKEND ERROR:", err.response?.data);
+      console.error("FULL ERROR:", err);
+      console.error("BACKEND ERROR:", err.response?.data);
 
-  setMessage(err.response?.data?.message || "Failed to add patient");
-  setMessageType("error");
-} finally {
+      setMessage(err.response?.data?.message || "Failed to add patient");
+      setMessageType("error");
+    } finally {
 
       setLoading(false);
 
@@ -198,25 +215,25 @@ export default function Reports() {
     try {
 
       setLoading(true);
-      const finalTests = [...selectedTests]; 
+      const finalTests = [...selectedTests];
       const payload = {
-  patientName: formData.patientName,
-  gender: formData.gender,
-  dateOfBirth: formData.dateOfBirth,
-  age: Number(formData.age),
-  ageType: formData.ageType,
-  referredByDoctor: formData.referredByDoctor,
-  doctorContactNo: formData.doctorContactNo,
-  address: formData.address,
-  mobileNumber: formData.mobileNumber,
-  city: formData.city,
+        patientName: formData.patientName,
+        gender: formData.gender,
+        dateOfBirth: formData.dateOfBirth,
+        age: Number(formData.age),
+        ageType: formData.ageType,
+        referredByDoctor: formData.referredByDoctor,
+        doctorContactNo: formData.doctorContactNo,
+        address: formData.address,
+        mobileNumber: formData.mobileNumber,
+        city: formData.city,
 
-  tests: finalTests
-};
-console.log("FINAL TESTS 👉", finalTests);
-console.log("FINAL PAYLOAD 👉", payload);
+        tests: finalTests
+      };
+      console.log("FINAL TESTS 👉", finalTests);
+      console.log("FINAL PAYLOAD 👉", payload);
 
-console.log("FINAL PAYLOAD 👉", payload);
+      console.log("FINAL PAYLOAD 👉", payload);
 
       await apiRequest("post", "/api/patient", payload);
 
@@ -228,18 +245,18 @@ console.log("FINAL PAYLOAD 👉", payload);
       fetchReports();
 
     } catch (err) {
-  console.error("FULL ERROR:", err);
+      console.error("FULL ERROR:", err);
 
-  console.log("REAL ERROR 👉", err.response?.data?.data);
+      console.log("REAL ERROR 👉", err.response?.data?.data);
 
-  setMessage(
-    err.response?.data?.data?.message ||
-    err.response?.data?.message ||
-    "Failed to add patient"
-  );
+      setMessage(
+        err.response?.data?.data?.message ||
+        err.response?.data?.message ||
+        "Failed to add patient"
+      );
 
-  setMessageType("error");
-} finally {
+      setMessageType("error");
+    } finally {
 
       setLoading(false);
 
@@ -281,7 +298,7 @@ console.log("FINAL PAYLOAD 👉", payload);
                   <th>City</th>
                   <th>Mobile Number</th>
                   <th>Date</th>
-                  <th>Test Count</th>          
+                  <th>Test Count</th>
                   <th>Action</th>
                 </tr>
               </thead>
@@ -307,14 +324,14 @@ console.log("FINAL PAYLOAD 👉", payload);
                       <td>{r.city}</td>
                       <td>{r.mobileNumber}</td>
                       <td>
-  {new Date(r.createdAt).toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  })}
-</td>
+                        {new Date(r.createdAt).toLocaleDateString("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </td>
 
-                      <td>{r.tests?.length || 0}</td>
+                      <td>{r.reportIds?.length || 0}</td>
 
                       <td>
                         <button
@@ -368,46 +385,35 @@ console.log("FINAL PAYLOAD 👉", payload);
               </thead>
 
               <tbody>
+                {selectedPatient.reportIds?.map((reportId, i) => {
 
-                {selectedPatient.tests?.map((test, idx) => {
-
+                  // fallback test name (since backend is not mapped properly)
                   const testName =
-                    typeof test === "string"
-                      ? test
-                      : test?.name || test?.testName || "-";
+                    selectedPatient.tests?.[i] ||
+                    selectedPatient.tests?.[0] ||  // fallback if only one test
+                    "Test";
 
                   return (
-
-                    <tr key={idx}>
-
+                    <tr key={i}>
                       <td>{testName}</td>
-                      <td>{selectedPatient.age} {selectedPatient.ageType}</td>
 
                       <td>
-                        {test?.isCompleted ? "Completed" : "Pending"}
+                        {selectedPatient.age} {selectedPatient.ageType}
                       </td>
+
+                      <td>Pending</td>
 
                       <td>
-
-                        {!test?.isCompleted && (
-
-                          <button
-                            className="btn-report btn-success"
-                            onClick={() => openAddResult(test)}
-                          >
-                            Enter Result
-                          </button>
-
-                        )}
-
+                        <button
+                          className="btn-report btn-success"
+                          onClick={() => openAddResult(reportId, testName)}
+                        >
+                          Enter Result
+                        </button>
                       </td>
-
                     </tr>
-
                   );
-
                 })}
-
               </tbody>
 
             </table>
@@ -416,7 +422,7 @@ console.log("FINAL PAYLOAD 👉", payload);
         )}
 
         {/* ================= SCREEN 3: ADD PATIENT ================= */}
-         {screen === "add" && (
+        {screen === "add" && (
           <>
             <div className="reports-header">
               <h2>Add Patient</h2>
@@ -478,22 +484,22 @@ console.log("FINAL PAYLOAD 👉", payload);
 
                 <label>Age</label>
                 <div className="d-flex align-items-center gap-2">
-                <input
-                  type="number"
-                  className="form-control"
-                  name="age"
-                  value={formData.age}
-                  readOnly
-                  style={{ background: "#f3f4f6", cursor: "not-allowed" }}
-                />
-                <input
-                  type="text"
-                  className="form-control"
-                  name="ageType"
-                  value={formData.ageType}
-                  readOnly
-                  style={{ background: "#f3f4f6", cursor: "not-allowed" }}
-                />
+                  <input
+                    type="number"
+                    className="form-control"
+                    name="age"
+                    value={formData.age}
+                    readOnly
+                    style={{ background: "#f3f4f6", cursor: "not-allowed" }}
+                  />
+                  <input
+                    type="text"
+                    className="form-control"
+                    name="ageType"
+                    value={formData.ageType}
+                    readOnly
+                    style={{ background: "#f3f4f6", cursor: "not-allowed" }}
+                  />
                 </div>
 
 
@@ -552,12 +558,12 @@ console.log("FINAL PAYLOAD 👉", payload);
         )}
 
         {/* ================= ADD RESULT ================= */}
-        {screen === "addResult" && selectedTest && (
+        {screen === "addResult" && (
 
           <>
             <div className="reports-header">
 
-              <h2>Add Result - {selectedTest.name}</h2>
+              <h2>Add Result - {selectedTestId || "Test"}</h2>
 
               <button
                 className="btn-report btn-secondary"
@@ -565,6 +571,38 @@ console.log("FINAL PAYLOAD 👉", payload);
               >
                 <ArrowLeft size={18} /> Back
               </button>
+              <input
+                placeholder="Hemoglobin"
+                onChange={(e) =>
+                  setResultData({ ...resultData, hemoglobin: e.target.value })
+                }
+              />
+
+              <input
+                placeholder="Min Range"
+                onChange={(e) =>
+                  setResultData({
+                    ...resultData,
+                    referenceRange: {
+                      ...resultData.referenceRange,
+                      min: e.target.value
+                    }
+                  })
+                }
+              />
+
+              <input
+                placeholder="Max Range"
+                onChange={(e) =>
+                  setResultData({
+                    ...resultData,
+                    referenceRange: {
+                      ...resultData.referenceRange,
+                      max: e.target.value
+                    }
+                  })
+                }
+              />
 
             </div>
 
