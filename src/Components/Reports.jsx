@@ -22,6 +22,10 @@ export default function Reports() {
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
 
+  const [savedResults, setSavedResults] = useState({});
+  const [parameters, setParameters] = useState([]);
+const [selectedTestName, setSelectedTestName] = useState("");
+
   const [resultData, setResultData] = useState({
     hemoglobin: "",
     unit: "g/dL",
@@ -138,49 +142,120 @@ export default function Reports() {
     setScreen("add");
   };
 
- const openAddResult = (reportId, testId) => {
-  setSelectedReportId(reportId);
-  setSelectedTestId(testId);
-  setResultData({});
-  setScreen("addResult");
+  const openAddResult = async (reportId, testCode) => {
+  try {
+    setLoading(true);
+
+    setSelectedReportId(reportId);
+    setSelectedTestId(testCode);
+    setSelectedTestName(testCode);
+
+    const res = await apiRequest(
+      "get",
+      `/api/parameter/subCategory/${testCode}`
+    );
+
+    const list = res?.data?.data || [];
+
+    const formatted = list.map(item => ({
+      ...item,
+      result: ""
+    }));
+
+    setParameters(formatted);
+
+    setScreen("addResult");
+  } catch (err) {
+    console.log(err);
+  } finally {
+    setLoading(false);
+  }
+};
+
+  const handleSubmitReport = async () => {
+  const tests = selectedPatient?.tests || [];
+
+  const completed = tests.every((id) => savedResults[id]);
+
+  if (!completed) {
+    alert("Please complete all test results before submitting.");
+    return;
+  }
+
+  try {
+    // Replace with your actual submit API if available
+    // await apiRequest("post", "/api/report/submit", {
+    //   reportId: selectedPatient._id,
+    // });
+
+    alert("Report Submitted Successfully");
+    fetchReports();
+    setScreen("list");
+  } catch (err) {
+    console.log(err);
+  }
+};
+
+  const handleResultChange = (index, value) => {
+  setParameters((prev) =>
+    prev.map((item, i) =>
+      i === index
+        ? {
+            ...item,
+            result: value,
+          }
+        : item
+    )
+  );
 };
 
   // ================= SAVE RESULT =================
   const handleSaveResult = async () => {
+  try {
+    setLoading(true);
 
-    try {
+    // Validation
+    const empty = parameters.some(
+      (p) => !p.result || p.result.toString().trim() === ""
+    );
 
-      setLoading(true);
-
-
-      const payload = {
-  reportId: selectedReportId,
-  testId: selectedTestId,
-  testResult: resultData
-};
-
-      console.log("SAVE PAYLOAD 👉", payload);
-
-
-      await apiRequest("post", "/api/report/addResult", payload);
-
-      setScreen("tests");
-
-      fetchReports();
-
-    } catch (err) {
-      console.error("FULL ERROR:", err);
-      console.error("BACKEND ERROR:", err.response?.data);
-
-      setMessage(err.response?.data?.message || "Failed to add patient");
-      setMessageType("error");
-    } finally {
-
-      setLoading(false);
-
+    if (empty) {
+      alert("Please enter all results.");
+      return;
     }
 
-  };
+    const payload = {
+      reportId: selectedReportId,
+      testId: selectedTestId,
+      testResult: parameters.map((p) => ({
+        parameterId: p._id,
+        parameterName: p.parameterName,
+        result: p.result,
+        unit: p.unit,
+        referenceRange: p.referenceRange,
+      })),
+    };
+
+    console.log(payload);
+
+    await apiRequest("post", "/api/report/addResult", payload);
+
+    // Mark this test as completed
+    setSavedResults((prev) => ({
+      ...prev,
+      [selectedReportId]: true,
+    }));
+
+    alert("Result saved successfully.");
+
+    setScreen("tests");
+  } catch (err) {
+    console.log(err);
+    alert("Failed to save result.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   // ================= ADD PATIENT =================
   const toggleTest = (key) => {
@@ -271,7 +346,6 @@ export default function Reports() {
     <div className="reports-wrapper">
       <div className="reports-container">
 
-        {/* ================= PATIENT LIST ================= */}
         {screen === "list" && (
 
           <>
@@ -331,7 +405,7 @@ export default function Reports() {
                         })}
                       </td>
 
-                      <td>{r.reportIds?.length || 0}</td>
+                      <td>{r.tests?.length || 0}</td>
 
                       <td>
                         <button
@@ -385,7 +459,7 @@ export default function Reports() {
               </thead>
 
               <tbody>
-                {selectedPatient.reportIds?.map((reportId, i) => {
+                {selectedPatient.tests?.map((reportId, i) => {
 
                   // fallback test name (since backend is not mapped properly)
                   const testName =
@@ -401,7 +475,13 @@ export default function Reports() {
                         {selectedPatient.age} {selectedPatient.ageType}
                       </td>
 
-                      <td>Pending</td>
+                      <td>
+                        {savedResults[reportId] ? (
+                          <span style={{ color: "green", fontWeight: 600 }}>Completed</span>
+                        ) : (
+                          <span style={{ color: "red", fontWeight: 600 }}>Pending</span>
+                        )}
+                      </td>
 
                       <td>
                         <button
@@ -417,6 +497,21 @@ export default function Reports() {
               </tbody>
 
             </table>
+
+            <div
+  style={{
+    display: "flex",
+    justifyContent: "flex-end",
+    marginTop: 20,
+  }}
+>
+  <button
+    className="btn-report btn-success"
+    onClick={handleSubmitReport}
+  >
+    Submit Report
+  </button>
+</div>
 
           </>
         )}
@@ -559,60 +654,62 @@ export default function Reports() {
 
         {/* ================= ADD RESULT ================= */}
         {screen === "addResult" && (
-
           <>
             <div className="reports-header">
+    <h2>{selectedTestName}</h2>
 
-              <h2>Add Result - {selectedTestId || "Test"}</h2>
+    <button
+        className="btn-report btn-secondary"
+        onClick={() => setScreen("tests")}
+    >
+        <ArrowLeft size={18} /> Back
+    </button>
+</div>
 
-              <button
-                className="btn-report btn-secondary"
-                onClick={() => setScreen("tests")}
-              >
-                <ArrowLeft size={18} /> Back
-              </button>
-              <input
-                placeholder="Hemoglobin"
-                onChange={(e) =>
-                  setResultData({ ...resultData, hemoglobin: e.target.value })
-                }
-              />
+<table className="reports-table">
+  <thead>
+    <tr>
+      <th>Test Name</th>
+      <th>Enter Result</th>
+      <th>Unit</th>
+      <th>Reference Range</th>
+    </tr>
+  </thead>
 
-              <input
-                placeholder="Min Range"
-                onChange={(e) =>
-                  setResultData({
-                    ...resultData,
-                    referenceRange: {
-                      ...resultData.referenceRange,
-                      min: e.target.value
-                    }
-                  })
-                }
-              />
+  <tbody>
+    {parameters.map((item, index) => (
+      <tr key={item._id}>
+        <td>{item.parameterName}</td>
 
-              <input
-                placeholder="Max Range"
-                onChange={(e) =>
-                  setResultData({
-                    ...resultData,
-                    referenceRange: {
-                      ...resultData.referenceRange,
-                      max: e.target.value
-                    }
-                  })
-                }
-              />
+        <td>
+          <input
+            type="text"
+            className="result-input"
+            value={item.result || ""}
+            onChange={(e) =>
+              handleResultChange(index, e.target.value)
+            }
+          />
+        </td>
 
-            </div>
+        <td>{item.unit}</td>
 
-            <button
-              className="btn-report btn-primary"
-              onClick={handleSaveResult}
-            >
-              Save Result
-            </button>
+        <td>
+          {item.referenceRange?.min} - {item.referenceRange?.max}
+        </td>
+      </tr>
+    ))}
+  </tbody>
+</table>
 
+<div className="reports-button-group">
+  <button
+    className="btn-report btn-primary"
+    onClick={handleSaveResult}
+  >
+    Save Result
+  </button>
+</div>
           </>
         )}
 

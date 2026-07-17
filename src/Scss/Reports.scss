@@ -884,3 +884,62 @@
 .btn-danger:hover {
   background: #dc2626;
 }
+
+.result-card {
+  background: #fff;
+  border-radius: 22px;
+  padding: 35px;
+  margin-top: 25px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .15);
+  animation: fadeInUp .5s ease;
+}
+
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+
+  label {
+    font-size: .95rem;
+    font-weight: 700;
+    color: #374151;
+    margin-bottom: 8px;
+  }
+
+  input {
+    width: 100%;
+    padding: 14px 18px;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    background: #f9fafb;
+    font-size: 15px;
+    transition: .3s;
+
+    &:focus {
+      outline: none;
+      border-color: #667eea;
+      background: #fff;
+      box-shadow: 0 0 0 4px rgba(102,126,234,.12);
+    }
+  }
+}
+
+.result-table .result-input {
+    width: 120px;
+    padding: 10px 14px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+    transition: .3s;
+}
+
+.result-table .result-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102,126,234,.15);
+}
