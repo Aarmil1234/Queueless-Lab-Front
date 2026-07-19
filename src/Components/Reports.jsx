@@ -24,7 +24,7 @@ export default function Reports() {
 
   const [savedResults, setSavedResults] = useState({});
   const [parameters, setParameters] = useState([]);
-const [selectedTestName, setSelectedTestName] = useState("");
+  const [selectedTestName, setSelectedTestName] = useState("");
 
   const [resultData, setResultData] = useState({
     hemoglobin: "",
@@ -115,6 +115,7 @@ const [selectedTestName, setSelectedTestName] = useState("");
   const fetchTests = async () => {
     try {
       const res = await apiRequest("get", "/api/parameter");
+      console.log(tests);
 
       console.log("TEST API RESPONSE:", res.data);
 
@@ -142,120 +143,161 @@ const [selectedTestName, setSelectedTestName] = useState("");
     setScreen("add");
   };
 
-  const openAddResult = async (reportId, testCode) => {
-  try {
-    setLoading(true);
+  const openAddResult = async (patientId, testCode) => {
+    try {
+      setLoading(true);
 
-    setSelectedReportId(reportId);
-    setSelectedTestId(testCode);
-    setSelectedTestName(testCode);
+      // Get pending tests for the patient
+      const res = await apiRequest(
+        "get",
+        `/api/report/getTestsList/${patientId}/pending`
+      );
 
-    const res = await apiRequest(
-      "get",
-      `/api/parameter/subCategory/${testCode}`
-    );
+      const tests = res?.data?.data?.testsList || [];
 
-    const list = res?.data?.data || [];
+      // Find selected test
+      const selectedTest = tests.find(
+        (t) => t.name === testCode
+      );
 
-    const formatted = list.map(item => ({
-      ...item,
-      result: ""
-    }));
+      if (!selectedTest) {
+        alert("Test not found");
+        return;
+      }
 
-    setParameters(formatted);
+      setSelectedReportId(selectedTest.reportId);
+      setSelectedTestId(selectedTest.id);
+      setSelectedTestName(selectedTest.name);
 
-    setScreen("addResult");
-  } catch (err) {
-    console.log(err);
-  } finally {
-    setLoading(false);
-  }
-};
+      const allParamRes = await apiRequest("get", "/api/parameter");
+
+      const allParameters = allParamRes?.data?.data || [];
+
+      // Match GLU2 -> parameter object
+      const matchedParameter = allParameters.find(
+        (p) => p.code === selectedTest.name
+      );
+
+      if (!matchedParameter) {
+        alert(`Parameter not found for ${selectedTest.name}`);
+        return;
+      }
+
+      console.log("Selected Test:", selectedTest);
+      console.log("Matched Parameter:", matchedParameter);
+
+      // Fetch parameter details
+      const url = `/api/parameter/${matchedParameter._id}`;
+
+      console.log("Calling URL:", url);
+
+      const parameterRes = await apiRequest("get", url);
+
+      console.log("Parameter Response:", parameterRes.data);
+
+      const parameterData = parameterRes?.data?.data || [];
+
+      setParameters(parameterData);
+
+      setScreen("addResult");
+
+    } catch (err) {
+      console.log(err);
+
+      if (err.response) {
+        console.log("Status:", err.response.status);
+        console.log("Response:", err.response.data);
+      }
+
+      alert("Unable to load test parameters.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmitReport = async () => {
-  const tests = selectedPatient?.tests || [];
+    const tests = selectedPatient?.tests || [];
 
-  const completed = tests.every((id) => savedResults[id]);
+    const completed = tests.every((id) => savedResults[id]);
 
-  if (!completed) {
-    alert("Please complete all test results before submitting.");
-    return;
-  }
-
-  try {
-    // Replace with your actual submit API if available
-    // await apiRequest("post", "/api/report/submit", {
-    //   reportId: selectedPatient._id,
-    // });
-
-    alert("Report Submitted Successfully");
-    fetchReports();
-    setScreen("list");
-  } catch (err) {
-    console.log(err);
-  }
-};
-
-  const handleResultChange = (index, value) => {
-  setParameters((prev) =>
-    prev.map((item, i) =>
-      i === index
-        ? {
-            ...item,
-            result: value,
-          }
-        : item
-    )
-  );
-};
-
-  // ================= SAVE RESULT =================
-  const handleSaveResult = async () => {
-  try {
-    setLoading(true);
-
-    // Validation
-    const empty = parameters.some(
-      (p) => !p.result || p.result.toString().trim() === ""
-    );
-
-    if (empty) {
-      alert("Please enter all results.");
+    if (!completed) {
+      alert("Please complete all test results before submitting.");
       return;
     }
 
-    const payload = {
-      reportId: selectedReportId,
-      testId: selectedTestId,
-      testResult: parameters.map((p) => ({
-        parameterId: p._id,
-        parameterName: p.parameterName,
-        result: p.result,
-        unit: p.unit,
-        referenceRange: p.referenceRange,
-      })),
-    };
+    try {
+      // Replace with your actual submit API if available
+      // await apiRequest("post", "/api/report/submit", {
+      //   reportId: selectedPatient._id,
+      // });
 
-    console.log(payload);
+      alert("Report Submitted Successfully");
+      fetchReports();
+      setScreen("list");
+    } catch (err) {
+      console.log(err);
+    }
+  };
 
-    await apiRequest("post", "/api/report/addResult", payload);
+  const handleResultChange = (index, value) => {
+    setParameters((prev) =>
+      prev.map((item, i) =>
+        i === index
+          ? {
+            ...item,
+            result: value,
+          }
+          : item
+      )
+    );
+  };
 
-    // Mark this test as completed
-    setSavedResults((prev) => ({
-      ...prev,
-      [selectedReportId]: true,
-    }));
+  // ================= SAVE RESULT =================
+  const handleSaveResult = async () => {
+    try {
+      setLoading(true);
 
-    alert("Result saved successfully.");
+      for (const p of parameters) {
+        const payload = {
+          reportId: selectedReportId,
+          testId: selectedTestId,
+          testResult: {
+            [p.parameterName.toLowerCase()]: Number(p.result),
+            unit: p.unit,
+            isCritical: false,
+            referenceRange: {
+              min: p.referenceRange?.min,
+              max: p.referenceRange?.max,
+            },
+            remarks: "",
+            previousValues: [],
+            collectedAt: new Date().toISOString(),
+            verifiedBy: null,
+          },
+        };
 
-    setScreen("tests");
-  } catch (err) {
-    console.log(err);
-    alert("Failed to save result.");
-  } finally {
-    setLoading(false);
-  }
-};
+        await apiRequest(
+          "post",
+          "/api/report/testWise",
+          payload
+        );
+      }
+
+      setSavedResults(prev => ({
+        ...prev,
+        [selectedTestId]: true,
+      }));
+
+      alert("Result saved successfully");
+      setScreen("tests");
+
+    } catch (err) {
+      console.log(err);
+      alert("Failed to save result");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // ================= ADD PATIENT =================
   const toggleTest = (key) => {
@@ -486,7 +528,7 @@ const [selectedTestName, setSelectedTestName] = useState("");
                       <td>
                         <button
                           className="btn-report btn-success"
-                          onClick={() => openAddResult(reportId, testName)}
+                          onClick={() => openAddResult(selectedPatient._id, reportId)}
                         >
                           Enter Result
                         </button>
@@ -499,19 +541,19 @@ const [selectedTestName, setSelectedTestName] = useState("");
             </table>
 
             <div
-  style={{
-    display: "flex",
-    justifyContent: "flex-end",
-    marginTop: 20,
-  }}
->
-  <button
-    className="btn-report btn-success"
-    onClick={handleSubmitReport}
-  >
-    Submit Report
-  </button>
-</div>
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                marginTop: 20,
+              }}
+            >
+              <button
+                className="btn-report btn-success"
+                onClick={handleSubmitReport}
+              >
+                Submit Report
+              </button>
+            </div>
 
           </>
         )}
@@ -656,60 +698,68 @@ const [selectedTestName, setSelectedTestName] = useState("");
         {screen === "addResult" && (
           <>
             <div className="reports-header">
-    <h2>{selectedTestName}</h2>
+              <h2>{selectedTestName}</h2>
 
-    <button
-        className="btn-report btn-secondary"
-        onClick={() => setScreen("tests")}
-    >
-        <ArrowLeft size={18} /> Back
-    </button>
-</div>
+              <button
+                className="btn-report btn-secondary"
+                onClick={() => setScreen("tests")}
+              >
+                <ArrowLeft size={18} /> Back
+              </button>
+            </div>
 
-<table className="reports-table">
-  <thead>
-    <tr>
-      <th>Test Name</th>
-      <th>Enter Result</th>
-      <th>Unit</th>
-      <th>Reference Range</th>
-    </tr>
-  </thead>
+            <table className="reports-table">
+              <thead>
+                <tr>
+                  <th>Test Name</th>
+                  <th>Enter Result</th>
+                  <th>Unit</th>
+                  <th>Age</th>
+                  <th>Min-Max Value</th>
+                </tr>
+              </thead>
 
-  <tbody>
-    {parameters.map((item, index) => (
-      <tr key={item._id}>
-        <td>{item.parameterName}</td>
+              <tbody>
+                {parameters
+                  .filter(Boolean)
+                  .map((item, index) => (
+                    <tr key={item._id || index}>
 
-        <td>
-          <input
-            type="text"
-            className="result-input"
-            value={item.result || ""}
-            onChange={(e) =>
-              handleResultChange(index, e.target.value)
-            }
-          />
-        </td>
+                      <td>{item.parameterName || item.name}</td>
 
-        <td>{item.unit}</td>
+                      <td>
+                        <input
+                          value={item.result || ""}
+                          onChange={(e) => handleResultChange(index, e.target.value)}
+                        />
+                      </td>
 
-        <td>
-          {item.referenceRange?.min} - {item.referenceRange?.max}
-        </td>
-      </tr>
-    ))}
-  </tbody>
-</table>
+                      <td>{item.unit || "-"}</td>
 
-<div className="reports-button-group">
-  <button
-    className="btn-report btn-primary"
-    onClick={handleSaveResult}
-  >
-    Save Result
-  </button>
-</div>
+                      <td>
+                        {item.age ??
+                          `${selectedPatient.age} ${selectedPatient.ageType}`}
+                      </td>
+
+                      <td>
+                        {item.referenceRange
+                          ? `${item.referenceRange.min} - ${item.referenceRange.max}`
+                          : "-"}
+                      </td>
+
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+
+            <div className="reports-button-group">
+              <button
+                className="btn-report btn-primary"
+                onClick={handleSaveResult}
+              >
+                Save Result
+              </button>
+            </div>
           </>
         )}
 
