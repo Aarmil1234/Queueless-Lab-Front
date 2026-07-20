@@ -226,10 +226,6 @@ export default function Reports() {
     }
 
     try {
-      // Replace with your actual submit API if available
-      // await apiRequest("post", "/api/report/submit", {
-      //   reportId: selectedPatient._id,
-      // });
 
       alert("Report Submitted Successfully");
       fetchReports();
@@ -251,30 +247,30 @@ export default function Reports() {
       )
     );
   };
-
-  // ================= SAVE RESULT =================
   const handleSaveResult = async () => {
     try {
       setLoading(true);
-
+      
       for (const p of parameters) {
+        const parameterKey = (p.parameterName || p.name).toLowerCase();
         const payload = {
           reportId: selectedReportId,
           testId: selectedTestId,
           testResult: {
-            [p.parameterName.toLowerCase()]: Number(p.result),
+            [parameterKey]: Number(p.result),
             unit: p.unit,
             isCritical: false,
             referenceRange: {
-              min: p.referenceRange?.min,
-              max: p.referenceRange?.max,
+              min: 120,
+              max: 150,
             },
-            remarks: "",
-            previousValues: [],
+            remarks: "Normal",
+            previousValues: [120, 150, 12],
             collectedAt: new Date().toISOString(),
             verifiedBy: null,
           },
         };
+        console.log("Payload:", JSON.stringify(payload, null, 2));
 
         await apiRequest(
           "post",
@@ -282,6 +278,7 @@ export default function Reports() {
           payload
         );
       }
+
 
       setSavedResults(prev => ({
         ...prev,
@@ -292,9 +289,12 @@ export default function Reports() {
       setScreen("tests");
 
     } catch (err) {
-      console.log(err);
-      alert("Failed to save result");
-    } finally {
+  console.log("SAVE ERROR:", err);
+  console.log("Status:", err.response?.status);
+  console.log("Response:", err.response?.data);
+
+  alert(err.response?.data?.message || "Failed to save result");
+} finally {
       setLoading(false);
     }
   };
@@ -470,7 +470,6 @@ export default function Reports() {
           </>
         )}
 
-        {/* ================= TEST LIST ================= */}
         {screen === "tests" && selectedPatient && (
 
           <>
@@ -503,10 +502,9 @@ export default function Reports() {
               <tbody>
                 {selectedPatient.tests?.map((reportId, i) => {
 
-                  // fallback test name (since backend is not mapped properly)
                   const testName =
                     selectedPatient.tests?.[i] ||
-                    selectedPatient.tests?.[0] ||  // fallback if only one test
+                    selectedPatient.tests?.[0] || 
                     "Test";
 
                   return (
@@ -558,7 +556,6 @@ export default function Reports() {
           </>
         )}
 
-        {/* ================= SCREEN 3: ADD PATIENT ================= */}
         {screen === "add" && (
           <>
             <div className="reports-header">
@@ -694,11 +691,14 @@ export default function Reports() {
           </>
         )}
 
-        {/* ================= ADD RESULT ================= */}
         {screen === "addResult" && (
           <>
             <div className="reports-header">
-              <h2>{selectedTestName}</h2>
+              {parameters
+                .filter(Boolean)
+                .map((item, index) => (
+                  <h2>{selectedPatient.patientName} ({selectedPatient.caseId})</h2>
+                ))}
 
               <button
                 className="btn-report btn-secondary"
@@ -725,11 +725,12 @@ export default function Reports() {
                   .map((item, index) => (
                     <tr key={item._id || index}>
 
-                      <td>{item.parameterName || item.name}</td>
+                      <td>{item.parameterName || item.name} ({selectedTestName})</td>
 
                       <td>
                         <input
                           value={item.result || ""}
+                          className="form-control border border-dark" style={{ width: "290px" }}
                           onChange={(e) => handleResultChange(index, e.target.value)}
                         />
                       </td>
