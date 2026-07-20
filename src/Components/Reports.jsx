@@ -8,13 +8,9 @@ export default function Reports() {
 
   const [reports, setReports] = useState([]);
   const [selectedPatient, setSelectedPatient] = useState(null);
-  const [selectedTest, setSelectedTest] = useState(null);
-
-  const [selectedReportId, setSelectedReportId] = useState(null);
 
   const [tests, setTests] = useState([]);
   const [selectedTests, setSelectedTests] = useState([]);
-  const [selectedTestId, setSelectedTestId] = useState(null);
 
   const [listLoading, setListLoading] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -22,23 +18,8 @@ export default function Reports() {
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
 
-  const [savedResults, setSavedResults] = useState({});
+  // Combined parameters across ALL pending tests for the selected patient
   const [parameters, setParameters] = useState([]);
-  const [selectedTestName, setSelectedTestName] = useState("");
-
-  const [resultData, setResultData] = useState({
-    hemoglobin: "",
-    unit: "g/dL",
-    isCritical: false,
-    referenceRange: {
-      min: "",
-      max: ""
-    },
-    remarks: "",
-    previousValues: [],
-    collectedAt: "",
-    verifiedBy: null
-  });
 
   const [formData, setFormData] = useState({
     patientName: "",
@@ -115,186 +96,147 @@ export default function Reports() {
   const fetchTests = async () => {
     try {
       const res = await apiRequest("get", "/api/parameter");
-      console.log(tests);
-
-      console.log("TEST API RESPONSE:", res.data);
-
       const list = res?.data?.data;
-
       setTests(Array.isArray(list) ? list : []);
     } catch (err) {
       console.error(err);
     }
   };
 
-
   useEffect(() => {
     fetchReports();
   }, []);
 
   // ================= NAVIGATION =================
-  const openPatientTests = (patient) => {
-    setSelectedPatient(patient);
-    setScreen("tests");
-  };
 
   const openAddPatient = async () => {
     await fetchTests();
     setScreen("add");
   };
 
-  const openAddResult = async (patientId, testCode) => {
+  const [reportDoc, setReportDoc] = useState(null);
+
+  const openPatientTests = async (patient) => {
     try {
       setLoading(true);
+      setSelectedPatient(patient);
 
-      // Get pending tests for the patient
       const res = await apiRequest(
         "get",
-        `/api/report/getTestsList/${patientId}/pending`
+        `/api/report/getTestsList/${patient._id}/pending`
       );
 
-      const tests = res?.data?.data?.testsList || [];
+      const report = res?.data?.data;
 
-      // Find selected test
-      const selectedTest = tests.find(
-        (t) => t.name === testCode
-      );
-
-      if (!selectedTest) {
-        alert("Test not found");
+      if (!report) {
+        alert("No report found for this patient.");
+        setLoading(false);
         return;
       }
 
-      setSelectedReportId(selectedTest.reportId);
-      setSelectedTestId(selectedTest.id);
-      setSelectedTestName(selectedTest.name);
+      setReportDoc(report);
 
+      const pendingTests = (report.testReport || []).filter(
+        (t) => !t.isReportSubmitted
+      );
+
+      if (pendingTests.length === 0) {
+        alert("No pending tests for this patient.");
+        setLoading(false);
+        return;
+      }
+
+      // Pull unit / reference range from parameter master, keyed by testName
       const allParamRes = await apiRequest("get", "/api/parameter");
-
       const allParameters = allParamRes?.data?.data || [];
 
-      // Match GLU2 -> parameter object
-      const matchedParameter = allParameters.find(
-        (p) => p.code === selectedTest.name
-      );
+      const rows = pendingTests.map((test) => {
+        const matchedParameter = allParameters.find(
+          (p) => p.code === test.testName
+        );
 
-      if (!matchedParameter) {
-        alert(`Parameter not found for ${selectedTest.name}`);
-        return;
-      }
+        return {
+          reportId: report._id,
+          testId: test._id,           // sub-document _id (testId field itself is null)
+          testName: test.testName,
+          parameterName: matchedParameter?.name || test.testName,
+          unit: matchedParameter?.unit || "-",
+          referenceRange: matchedParameter?.referenceRange || null,
+          result: "",
+        };
+      });
 
-      console.log("Selected Test:", selectedTest);
-      console.log("Matched Parameter:", matchedParameter);
-
-      // Fetch parameter details
-      const url = `/api/parameter/${matchedParameter._id}`;
-
-      console.log("Calling URL:", url);
-
-      const parameterRes = await apiRequest("get", url);
-
-      console.log("Parameter Response:", parameterRes.data);
-
-      const parameterData = parameterRes?.data?.data || [];
-
-      setParameters(parameterData);
-
+      setParameters(rows);
       setScreen("addResult");
 
     } catch (err) {
-      console.log(err);
-
-      if (err.response) {
-        console.log("Status:", err.response.status);
-        console.log("Response:", err.response.data);
-      }
-
-      alert("Unable to load test parameters.");
+      console.error(err);
+      alert("Unable to load tests.");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleSubmitReport = async () => {
-    const tests = selectedPatient?.tests || [];
-
-    const completed = tests.every((id) => savedResults[id]);
-
-    if (!completed) {
-      alert("Please complete all test results before submitting.");
-      return;
-    }
-
-    try {
-
-      alert("Report Submitted Successfully");
-      fetchReports();
-      setScreen("list");
-    } catch (err) {
-      console.log(err);
     }
   };
 
   const handleResultChange = (index, value) => {
     setParameters((prev) =>
       prev.map((item, i) =>
-        i === index
-          ? {
-            ...item,
-            result: value,
-          }
-          : item
+        i === index ? { ...item, result: value } : item
       )
     );
   };
-  const handleSaveResult = async () => {
+const handleSubmitReport = async () => {
+    const incomplete = parameters.some(
+      (p) => p.result === "" || p.result === null || p.result === undefined
+    );
+
+    if (incomplete) {
+      alert("Please enter all result values before submitting.");
+      return;
+    }
+
     try {
       setLoading(true);
-      
-      for (const p of parameters) {
-        const parameterKey = (p.parameterName || p.name).toLowerCase();
-        const payload = {
-          reportId: selectedReportId,
-          testId: selectedTestId,
+
+      const testReport = parameters.map((p) => {
+        const parameterKey = (p.parameterName || p.testName).toLowerCase();
+
+        return {
+          testId: p.testId,
+          testName: p.testName,
+          isReportSubmitted: true,
           testResult: {
             [parameterKey]: Number(p.result),
             unit: p.unit,
             isCritical: false,
             referenceRange: {
-              min: 120,
-              max: 150,
+              min: p.referenceRange?.min ?? 120,
+              max: p.referenceRange?.max ?? 150,
             },
             remarks: "Normal",
-            previousValues: [120, 150, 12],
+            previousValues: [],
             collectedAt: new Date().toISOString(),
             verifiedBy: null,
           },
         };
-        console.log("Payload:", JSON.stringify(payload, null, 2));
+      });
 
-        await apiRequest(
-          "post",
-          "/api/report/testWise",
-          payload
-        );
-      }
+      const payload = {
+        reportId: reportDoc._id,
+        testReport,
+      };
 
+      console.log("Payload:", JSON.stringify(payload, null, 2));
 
-      setSavedResults(prev => ({
-        ...prev,
-        [selectedTestId]: true,
-      }));
+      await apiRequest("post", "/api/report/submit", payload);
 
-      alert("Result saved successfully");
-      setScreen("tests");
+      alert("Report Submitted Successfully");
+      setScreen("list");
+      fetchReports();
 
     } catch (err) {
-  console.log("SAVE ERROR:", err);
-  console.log("Status:", err.response?.status);
-  console.log("Response:", err.response?.data);
-
-  alert(err.response?.data?.message || "Failed to save result");
-} finally {
+      console.log("SUBMIT ERROR:", err);
+      alert(err.response?.data?.message || "Failed to submit report");
+    } finally {
       setLoading(false);
     }
   };
@@ -347,10 +289,6 @@ export default function Reports() {
 
         tests: finalTests
       };
-      console.log("FINAL TESTS 👉", finalTests);
-      console.log("FINAL PAYLOAD 👉", payload);
-
-      console.log("FINAL PAYLOAD 👉", payload);
 
       await apiRequest("post", "/api/patient", payload);
 
@@ -363,8 +301,6 @@ export default function Reports() {
 
     } catch (err) {
       console.error("FULL ERROR:", err);
-
-      console.log("REAL ERROR 👉", err.response?.data?.data);
 
       setMessage(
         err.response?.data?.data?.message ||
@@ -423,11 +359,11 @@ export default function Reports() {
 
                 {listLoading ? (
                   <tr>
-                    <td colSpan="3">Loading...</td>
+                    <td colSpan="8">Loading...</td>
                   </tr>
                 ) : reports.length === 0 ? (
                   <tr>
-                    <td colSpan="3">No pending cases</td>
+                    <td colSpan="8">No pending cases</td>
                   </tr>
                 ) : (
                   reports.map((r, idx) => (
@@ -453,8 +389,9 @@ export default function Reports() {
                         <button
                           className="btn-report btn-primary"
                           onClick={() => openPatientTests(r)}
+                          disabled={loading}
                         >
-                          View Tests
+                          {loading ? "Loading..." : "View Tests"}
                         </button>
                       </td>
 
@@ -466,92 +403,6 @@ export default function Reports() {
               </tbody>
 
             </table>
-
-          </>
-        )}
-
-        {screen === "tests" && selectedPatient && (
-
-          <>
-            <div className="reports-header">
-
-              <h2>
-                {selectedPatient.patientName} ({selectedPatient.caseId})
-              </h2>
-
-              <button
-                className="btn-report btn-secondary"
-                onClick={() => setScreen("list")}
-              >
-                <ArrowLeft size={18} /> Back
-              </button>
-
-            </div>
-
-            <table className="reports-table">
-
-              <thead>
-                <tr>
-                  <th>Test Name</th>
-                  <th>Age</th>
-                  <th>Status</th>
-                  <th>Enter Result</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {selectedPatient.tests?.map((reportId, i) => {
-
-                  const testName =
-                    selectedPatient.tests?.[i] ||
-                    selectedPatient.tests?.[0] || 
-                    "Test";
-
-                  return (
-                    <tr key={i}>
-                      <td>{testName}</td>
-
-                      <td>
-                        {selectedPatient.age} {selectedPatient.ageType}
-                      </td>
-
-                      <td>
-                        {savedResults[reportId] ? (
-                          <span style={{ color: "green", fontWeight: 600 }}>Completed</span>
-                        ) : (
-                          <span style={{ color: "red", fontWeight: 600 }}>Pending</span>
-                        )}
-                      </td>
-
-                      <td>
-                        <button
-                          className="btn-report btn-success"
-                          onClick={() => openAddResult(selectedPatient._id, reportId)}
-                        >
-                          Enter Result
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-
-            </table>
-
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                marginTop: 20,
-              }}
-            >
-              <button
-                className="btn-report btn-success"
-                onClick={handleSubmitReport}
-              >
-                Submit Report
-              </button>
-            </div>
 
           </>
         )}
@@ -615,7 +466,6 @@ export default function Reports() {
                   required
                 />
 
-
                 <label>Age</label>
                 <div className="d-flex align-items-center gap-2">
                   <input
@@ -635,8 +485,6 @@ export default function Reports() {
                     style={{ background: "#f3f4f6", cursor: "not-allowed" }}
                   />
                 </div>
-
-
 
                 <label>Referred By Doctor</label>
                 <input name="referredByDoctor" value={formData.referredByDoctor} onChange={handleChange} />
@@ -691,18 +539,14 @@ export default function Reports() {
           </>
         )}
 
-        {screen === "addResult" && (
+        {screen === "addResult" && selectedPatient && (
           <>
             <div className="reports-header">
-              {parameters
-                .filter(Boolean)
-                .map((item, index) => (
-                  <h2>{selectedPatient.patientName} ({selectedPatient.caseId})</h2>
-                ))}
+              <h2>{selectedPatient.patientName} ({selectedPatient.caseId})</h2>
 
               <button
                 className="btn-report btn-secondary"
-                onClick={() => setScreen("tests")}
+                onClick={() => setScreen("list")}
               >
                 <ArrowLeft size={18} /> Back
               </button>
@@ -711,7 +555,7 @@ export default function Reports() {
             <table className="reports-table">
               <thead>
                 <tr>
-                  <th>Test Name</th>
+                  <th>Parameter Name</th>
                   <th>Enter Result</th>
                   <th>Unit</th>
                   <th>Age</th>
@@ -725,12 +569,15 @@ export default function Reports() {
                   .map((item, index) => (
                     <tr key={item._id || index}>
 
-                      <td>{item.parameterName || item.name} ({selectedTestName})</td>
+                      <td>
+                        {item.parameterName || item.name} ({item.testName})
+                      </td>
 
                       <td>
                         <input
                           value={item.result || ""}
-                          className="form-control border border-dark" style={{ width: "290px" }}
+                          className="form-control border border-dark"
+                          style={{ width: "290px" }}
                           onChange={(e) => handleResultChange(index, e.target.value)}
                         />
                       </td>
@@ -753,12 +600,19 @@ export default function Reports() {
               </tbody>
             </table>
 
-            <div className="reports-button-group">
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                marginTop: 20,
+              }}
+            >
               <button
-                className="btn-report btn-primary"
-                onClick={handleSaveResult}
+                className="btn-report btn-success"
+                onClick={handleSubmitReport}
+                disabled={loading}
               >
-                Save Result
+                {loading ? "Submitting..." : "Submit Report"}
               </button>
             </div>
           </>
