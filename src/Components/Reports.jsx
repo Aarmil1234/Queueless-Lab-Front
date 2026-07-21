@@ -17,6 +17,7 @@ export default function Reports() {
 
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
+  const [loadingPatientId, setLoadingPatientId] = useState(null);
 
   // Combined parameters across ALL pending tests for the selected patient
   const [parameters, setParameters] = useState([]);
@@ -114,80 +115,112 @@ export default function Reports() {
     setScreen("add");
   };
 
-  const [reportDoc, setReportDoc] = useState(null);
-
+  // Clicking "View Tests" now goes straight to one combined results table
+  // built from every pending test the patient has.
   const openPatientTests = async (patient) => {
     try {
-      setLoading(true);
+      setLoadingPatientId(patient.caseId);
       setSelectedPatient(patient);
 
+      // 1. Get all pending tests for this patient
       const res = await apiRequest(
         "get",
         `/api/report/getTestsList/${patient._id}/pending`
       );
 
-      const report = res?.data?.data;
+      const testsList = res?.data?.data?.testsList || [];
 
-      if (!report) {
-        alert("No report found for this patient.");
-        setLoading(false);
-        return;
-      }
-
-      setReportDoc(report);
-
-      const pendingTests = (report.testReport || []).filter(
-        (t) => !t.isReportSubmitted
-      );
-
-      if (pendingTests.length === 0) {
+      if (testsList.length === 0) {
         alert("No pending tests for this patient.");
-        setLoading(false);
+        setLoadingPatientId(null);
         return;
       }
 
-      // Pull unit / reference range from parameter master, keyed by testName
+      // 2. Fetch parameter definitions once, reuse for matching
       const allParamRes = await apiRequest("get", "/api/parameter");
       const allParameters = allParamRes?.data?.data || [];
 
-      const rows = pendingTests.map((test) => {
+      let combinedParameters = [];
+
+      // 3. For each pending test, find its parameter definition and
+      //    pull the detailed parameter fields, tagging each row with
+      //    which test/report it belongs to so we can submit correctly.
+      for (const test of testsList) {
         const matchedParameter = allParameters.find(
-          (p) => p.code === test.testName
+          (p) => p.code === test.name
         );
 
-        return {
-          reportId: report._id,
-          testId: test._id,           // sub-document _id (testId field itself is null)
-          testName: test.testName,
-          parameterName: matchedParameter?.name || test.testName,
-          unit: matchedParameter?.unit || "-",
-          referenceRange: matchedParameter?.referenceRange || null,
-          result: "",
-        };
-      });
+        if (!matchedParameter) {
+          console.warn(`Parameter not found for ${test.name}`);
+          continue;
+        }
 
-      setParameters(rows);
+        const parameterRes = await apiRequest(
+          "get",
+          `/api/parameter/${matchedParameter._id}`
+        );
+
+        const parameterData = parameterRes?.data?.data;
+        const paramArray = Array.isArray(parameterData)
+          ? parameterData
+          : parameterData
+          ? [parameterData]
+          : [];
+
+        const withTestInfo = paramArray
+          .filter(Boolean)
+          .map((p) => ({
+            ...p,
+            reportId: test.reportId,
+            testId: test.id,
+            testName: test.name,
+            result: "",
+          }));
+
+        combinedParameters = [...combinedParameters, ...withTestInfo];
+      }
+
+      if (combinedParameters.length === 0) {
+        alert("No parameters found for pending tests.");
+        setLoadingPatientId(null);
+        return;
+      }
+
+      setParameters(combinedParameters);
       setScreen("addResult");
 
     } catch (err) {
       console.error(err);
-      alert("Unable to load tests.");
+
+      if (err.response) {
+        console.log("Status:", err.response.status);
+        console.log("Response:", err.response.data);
+      }
+
+      alert("Unable to load test parameters.");
     } finally {
-      setLoading(false);
+      setLoadingPatientId(null);
     }
   };
 
   const handleResultChange = (index, value) => {
     setParameters((prev) =>
       prev.map((item, i) =>
-        i === index ? { ...item, result: value } : item
+        i === index
+          ? {
+              ...item,
+              result: value,
+            }
+          : item
       )
     );
   };
-const handleSubmitReport = async () => {
-    const incomplete = parameters.some(
-      (p) => p.result === "" || p.result === null || p.result === undefined
-    );
+
+  // Single submit: validates every row has a result, then posts each
+  // parameter (grouped implicitly by its own testId/reportId) and
+  // finally marks the report submitted.
+  const handleSubmitReport = async () => {
+    const incomplete = parameters.some((p) => p.result === "" || p.result === null || p.result === undefined);
 
     if (incomplete) {
       alert("Please enter all result values before submitting.");
@@ -197,13 +230,11 @@ const handleSubmitReport = async () => {
     try {
       setLoading(true);
 
-      const testReport = parameters.map((p) => {
-        const parameterKey = (p.parameterName || p.testName).toLowerCase();
-
-        return {
+      for (const p of parameters) {
+        const parameterKey = (p.parameterName || p.name).toLowerCase();
+        const payload = {
+          reportId: p.reportId,
           testId: p.testId,
-          testName: p.testName,
-          isReportSubmitted: true,
           testResult: {
             [parameterKey]: Number(p.result),
             unit: p.unit,
@@ -218,16 +249,11 @@ const handleSubmitReport = async () => {
             verifiedBy: null,
           },
         };
-      });
 
-      const payload = {
-        reportId: reportDoc._id,
-        testReport,
-      };
+        console.log("Payload:", JSON.stringify(payload, null, 2));
 
-      console.log("Payload:", JSON.stringify(payload, null, 2));
-
-      await apiRequest("post", "/api/report/submit", payload);
+        await apiRequest("post", "/api/report/testWise", payload);
+      }
 
       alert("Report Submitted Successfully");
       setScreen("list");
@@ -235,6 +261,9 @@ const handleSubmitReport = async () => {
 
     } catch (err) {
       console.log("SUBMIT ERROR:", err);
+      console.log("Status:", err.response?.status);
+      console.log("Response:", err.response?.data);
+
       alert(err.response?.data?.message || "Failed to submit report");
     } finally {
       setLoading(false);
@@ -389,9 +418,11 @@ const handleSubmitReport = async () => {
                         <button
                           className="btn-report btn-primary"
                           onClick={() => openPatientTests(r)}
-                          disabled={loading}
+                          disabled={loadingPatientId === r.caseId}
                         >
-                          {loading ? "Loading..." : "View Tests"}
+                          {loadingPatientId === r.caseId
+                            ? "Loading..."
+                            : "View Tests"}
                         </button>
                       </td>
 
