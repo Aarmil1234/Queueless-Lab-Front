@@ -114,10 +114,19 @@ const ReportHistory = () => {
         return;
       }
 
-      const res = await apiRequest(
-        "get",
-        `/api/report?labId=${patient.labId}`
-      );
+     console.log("Lab ID:", patient.labId);
+
+const body = {
+  labId: patient.labId,
+};
+
+console.log("Request Body:", body);
+
+const res = await apiRequest(
+  "get",
+  "/api/report",
+  body
+);
 
       const allReports =
         res?.data?.data ||
@@ -126,8 +135,6 @@ const ReportHistory = () => {
 
       const list = Array.isArray(allReports) ? allReports : [];
 
-      // Match this patient's report docs — by patientId, falling back
-      // to reportIds if patientId isn't present on the doc.
       const patientReports = list.filter(
         (r) =>
           r.patientId === patient._id ||
@@ -158,9 +165,20 @@ const ReportHistory = () => {
       }));
 
     } catch (err) {
-      console.error("Failed to fetch report history", err);
-      alert("Unable to load reports for this patient.");
-    } finally {
+  console.log("Status:", err.response?.status);
+
+  console.log("Full Response:", err.response?.data);
+
+  console.log(
+    "Backend Error:",
+    JSON.stringify(err.response?.data, null, 2)
+  );
+
+  console.log(
+    "Backend Data:",
+    JSON.stringify(err.response?.data?.data, null, 2)
+  );
+}finally {
       setTestsLoading(false);
     }
   };

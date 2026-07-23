@@ -216,59 +216,62 @@ export default function Reports() {
     );
   };
 
-  // Single submit: validates every row has a result, then posts each
-  // parameter (grouped implicitly by its own testId/reportId) and
-  // finally marks the report submitted.
-  const handleSubmitReport = async () => {
-    const incomplete = parameters.some((p) => p.result === "" || p.result === null || p.result === undefined);
+ const handleSubmitReport = async () => {
+  try {
+    setLoading(true);
 
-    if (incomplete) {
-      alert("Please enter all result values before submitting.");
-      return;
-    }
+    const reportId = parameters[0].reportId;
+    console.log(parameters);
 
-    try {
-      setLoading(true);
+    const payload = {
+  reportId,
+  tests: parameters
+    .filter(item => item.parameterName || item.name || item.testName)
+    .map(item => {
+      const key = (
+        item.parameterName ||
+        item.name ||
+        item.testName
+      ).toLowerCase();
 
-      for (const p of parameters) {
-        const parameterKey = (p.parameterName || p.name).toLowerCase();
-        const payload = {
-          reportId: p.reportId,
-          testId: p.testId,
-          testResult: {
-            [parameterKey]: Number(p.result),
-            unit: p.unit,
-            isCritical: false,
-            referenceRange: {
-              min: p.referenceRange?.min ?? 120,
-              max: p.referenceRange?.max ?? 150,
-            },
-            remarks: "Normal",
-            previousValues: [],
-            collectedAt: new Date().toISOString(),
-            verifiedBy: null,
+      return {
+        testId: item.testId,
+        testResult: {
+          [key]: Number(item.result),
+          unit: item.unit,
+          isCritical: false,
+          referenceRange: {
+            min: item.referenceRange?.min,
+            max: item.referenceRange?.max,
           },
-        };
+          remarks: "Normal",
+          previousValues: [],
+          collectedAt: new Date().toISOString(),
+          verifiedBy: null,
+        },
+      };
+    }),
+};
 
-        console.log("Payload:", JSON.stringify(payload, null, 2));
+    console.log(payload);
 
-        await apiRequest("post", "/api/report/testWise", payload);
-      }
+    await apiRequest(
+      "post",
+      "/api/report/testWise",
+      payload
+    );
 
-      alert("Report Submitted Successfully");
-      setScreen("list");
-      fetchReports();
+    alert("Report Submitted Successfully");
 
-    } catch (err) {
-      console.log("SUBMIT ERROR:", err);
-      console.log("Status:", err.response?.status);
-      console.log("Response:", err.response?.data);
+    fetchReports();
 
-      alert(err.response?.data?.message || "Failed to submit report");
-    } finally {
-      setLoading(false);
-    }
-  };
+    setScreen("list");
+  } catch (err) {
+    console.log(err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   // ================= ADD PATIENT =================
   const toggleTest = (key) => {

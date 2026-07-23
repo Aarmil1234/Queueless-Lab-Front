@@ -61,10 +61,23 @@ axiosInstance.interceptors.response.use(
   }
 );
 
+// export const apiRequest = (method, url, data = null) => {
+//   return axiosInstance({
+//     method,
+//     url,
+//     data,
+//   });
+// };
+
 export const apiRequest = (method, url, data = null) => {
-  return axiosInstance({
+  const config = {
     method,
     url,
-    data,
-  });
+  };
+
+  if (data) {
+    config.data = data;
+  }
+
+  return axiosInstance(config);
 };
