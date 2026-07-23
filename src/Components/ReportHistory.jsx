@@ -116,16 +116,10 @@ const ReportHistory = () => {
 
      console.log("Lab ID:", patient.labId);
 
-const body = {
-  labId: patient.labId,
-};
-
-console.log("Request Body:", body);
 
 const res = await apiRequest(
   "get",
-  "/api/report",
-  body
+  "/api/report"
 );
 
       const allReports =
@@ -201,7 +195,7 @@ const res = await apiRequest(
         <div className="reports-container">
 
           <div className="reports-header">
-            <h2>{selectedTest.testName} Report</h2>
+            <h2>{selectedPatient.name}</h2>
 
             <div style={{ display: "flex", gap: "10px" }}>
               <button
@@ -277,7 +271,7 @@ const res = await apiRequest(
         <div className="reports-container">
 
           <div className="reports-header">
-            <h2>{selectedPatient.name} – Test Reports</h2>
+            <h2>{selectedPatient.name}</h2>
 
             <button
               className="btn-report btn-primary"
