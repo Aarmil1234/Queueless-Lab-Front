@@ -832,33 +832,6 @@ const Navbar = ({ collapsed }) => {
         </div>
 
 
-        {/* ==============================================
-            LOGOUT BUTTON
-        =============================================== */}
-
-        <button
-          style={logoutBtnStyle}
-          onClick={
-            handleLogout
-          }
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform =
-              "translateY(-2px)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform =
-              "translateY(0)";
-          }}
-        >
-
-          <LogOut size={18} />
-
-          <span>
-            Sign Out
-          </span>
-
-        </button>
-
       </div>
 
     </nav>

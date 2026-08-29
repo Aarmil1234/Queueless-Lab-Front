@@ -361,7 +361,7 @@ export default function Reports() {
             return {
               testId: item.testId,
               testResult: {
-                [key]: Number(item.result),
+                [key]: String(item.result),
                 unit: item.unit,
                 isCritical: false,
                 referenceRange: {
