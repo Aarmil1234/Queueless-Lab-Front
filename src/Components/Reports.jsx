@@ -134,7 +134,7 @@ export default function Reports() {
             parameterName: param.name,
             subParameterId: sub._id,
             subParameterName: sub.name,
-            unit: param.unit,
+            unit: sub.unit,
           });
         });
       } else {
@@ -766,6 +766,7 @@ export default function Reports() {
                             const grouped = {};
 
                             test.parameters.forEach((item) => {
+                              
                               const mainParameter =
                                 item.parameterName || "Other";
 
@@ -1001,6 +1002,7 @@ export default function Reports() {
                     const subParameterLabel = item.parentParameter
                       ? item.parameterName || item.name || "-"
                       : "-";
+                      
 
                     return (
                       <tr key={item._id || index}>
