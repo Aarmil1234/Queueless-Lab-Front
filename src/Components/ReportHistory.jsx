@@ -11,14 +11,18 @@ const ReportHistory = () => {
   const [loading, setLoading] = useState(false);
   const [testsLoading, setTestsLoading] = useState(false);
   const [hospitalName, setHospitalName] = useState("");
+  const [busyAction, setBusyAction] = useState(null); // "print" | "download" | null
+  const busy = busyAction !== null;
 
   useEffect(() => {
-    const name = sessionStorage.getItem("hospitalName");
+    const name = localStorage.getItem("hospitalName");
 
     setHospitalName(name || "My Lab");
   }, []);
 
   const handlePrint = async () => {
+    if (busy) return;
+    setBusyAction("print");
     try {
       const response = await apiRequest(
         "get",
@@ -38,6 +42,12 @@ const ReportHistory = () => {
 
       const printWindow = window.open(url, "_blank");
 
+      if (!printWindow) {
+        URL.revokeObjectURL(url);
+        alert("Please allow pop-ups for this site to print the report.");
+        return;
+      }
+
       printWindow.onload = () => {
         printWindow.focus();
         printWindow.print();
@@ -50,10 +60,14 @@ const ReportHistory = () => {
     } catch (err) {
       console.error(err);
       alert("Unable to print report.");
+    } finally {
+      setBusyAction(null);
     }
   };
 
   const handleDownload = async () => {
+    if (busy) return;
+    setBusyAction("download");
     try {
       const response = await apiRequest(
         "get",
@@ -83,6 +97,8 @@ const ReportHistory = () => {
     } catch (err) {
       console.error(err);
       alert("Failed to download report");
+    } finally {
+      setBusyAction(null);
     }
   };
 
@@ -244,15 +260,19 @@ const ReportHistory = () => {
               <button
                 className="btn-report btn-success"
                 onClick={handlePrint}
+                disabled={busy}
+                style={busy ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
               >
-                Print Report
+                {busyAction === "print" ? "Working…" : "Print Report"}
               </button>
 
               <button
                 className="btn-report btn-primary"
                 onClick={handleDownload}
+                disabled={busy}
+                style={busy ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
               >
-                Download PDF
+                {busyAction === "download" ? "Working…" : "Download PDF"}
               </button>
             </div>
           </div>

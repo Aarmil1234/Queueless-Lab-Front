@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import Swal from "sweetalert2";
 import { apiRequest } from "../reusable";
 import {
   Plus, ArrowLeft, Trash2, CheckCircle, AlertCircle,
@@ -35,8 +36,8 @@ export default function SubParameterManager() {
   const [parameterId, setParameterId] = useState("");
   const [subParams, setSubParams]   = useState([]);
 
-  const [code, setCode]       = useState("");
   const [name, setName]       = useState("");
+  const [unit, setUnit]       = useState("");
   const [isActive, setIsActive] = useState(true);
 
   const [loading, setLoading]         = useState(false);
@@ -67,7 +68,7 @@ export default function SubParameterManager() {
   };
 
   // ── Helpers ────────────────────────────────────────────────────────────────
-  const resetForm = () => { setCode(""); setName(""); setIsActive(true); };
+  const resetForm = () => { setName(""); setUnit(""); setIsActive(true); };
 
   const showMsg = (msg, type) => {
     setMessage(msg); setMessageType(type);
@@ -77,10 +78,11 @@ export default function SubParameterManager() {
   // ── Handlers ───────────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!parameterId || !code || !name) { showMsg("All fields are required.", "error"); return; }
+    if (loading) return;
+    if (!parameterId || !name || !unit) { showMsg("All fields are required.", "error"); return; }
     try {
       setLoading(true);
-      await apiRequest("post", "/api/parameter/subCategory/add", { parameterId, code, name, isActive });
+      await apiRequest("post", "/api/parameter/subCategory/add", { parameterId, name, unit, isActive });
       showMsg("Sub-parameter added successfully.", "success");
       resetForm(); setView("list"); fetchSubParams(parameterId);
     } catch { showMsg("Failed to add sub-parameter.", "error"); }
@@ -88,7 +90,16 @@ export default function SubParameterManager() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this sub-parameter?")) return;
+    const result = await Swal.fire({
+      title: "Delete this sub-parameter?",
+      text: "This action cannot be undone.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete it",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#ef4444",
+    });
+    if (!result.isConfirmed) return;
     try {
       await apiRequest("delete", `/api/parameter/subCategory/${id}`);
       showMsg("Deleted successfully.", "success");
@@ -264,7 +275,7 @@ export default function SubParameterManager() {
                 <table style={{ width:"100%", borderCollapse:"collapse" }}>
                   <thead>
                     <tr style={{ background:T.grad }}>
-                      {["#","Code","Name","Status","Actions"].map(h=>(
+                      {["#","Name","Unit","Status","Actions"].map(h=>(
                         <th key={h} style={{
                           padding:"15px 18px", textAlign:"left",
                           fontSize:"0.78rem", fontWeight:700, color:"white",
@@ -283,18 +294,15 @@ export default function SubParameterManager() {
                         <td style={{ padding:"16px 18px", fontFamily:"'DM Mono','Courier New',monospace", fontWeight:700, color:"#667eea", fontSize:"0.85rem" }}>
                           {String(i+1).padStart(2,"0")}
                         </td>
+                        <td style={{ padding:"16px 18px", fontWeight:600, color:"#1f2937", fontSize:"0.92rem" }}>{s.name}</td>
                         <td style={{ padding:"16px 18px" }}>
                           <span style={{
-                            fontFamily:"'DM Mono','Courier New',monospace",
-                            background:"#f0edff", color:"#667eea",
-                            padding:"4px 10px", borderRadius:8,
-                            fontSize:"0.85rem", fontWeight:700,
-                            border:"1px solid #e0d9ff",
-                          }}>
-                            {s.code}
-                          </span>
+                            background:"#f0fdf4", color:"#16a34a",
+                            border:"1px solid #bbf7d0",
+                            padding:"3px 10px", borderRadius:20,
+                            fontSize:"0.82rem", fontWeight:600, display:"inline-block",
+                          }}>{s.unit}</span>
                         </td>
-                        <td style={{ padding:"16px 18px", fontWeight:600, color:"#1f2937", fontSize:"0.92rem" }}>{s.name}</td>
                         <td style={{ padding:"16px 18px" }}>
                           <span style={{
                             display:"inline-flex", alignItems:"center", gap:5,
@@ -389,19 +397,7 @@ export default function SubParameterManager() {
                 <p style={{ ...labelBase, margin:"0 0 18px" }}>Sub-Parameter Details</p>
                 <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"18px 24px" }}>
 
-                  <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
-                    <label style={labelBase}>Code *</label>
-                    <input
-                      type="text" value={code} required
-                      onChange={e=>setCode(e.target.value)}
-                      placeholder="e.g. RBC_1"
-                      style={{ ...fieldBase, fontFamily:"'DM Mono','Courier New',monospace" }}
-                      onFocus={focusOn} onBlur={focusOff}
-                    />
-                    <span style={{ fontSize:"0.73rem", color:"#9ca3af" }}>Short unique identifier</span>
-                  </div>
-
-                  <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                  <div style={{ display:"flex", flexDirection:"column", gap:6, gridColumn:"1 / -1" }}>
                     <label style={labelBase}>Name *</label>
                     <input
                       type="text" value={name} required
@@ -411,39 +407,48 @@ export default function SubParameterManager() {
                       onFocus={focusOn} onBlur={focusOff}
                     />
                   </div>
+
+                  <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                    <label style={labelBase}>Unit *</label>
+                    <input
+                      type="text" value={unit} required
+                      onChange={e=>setUnit(e.target.value)}
+                      placeholder="e.g. mg/dL, g/dL, cells/µL"
+                      style={fieldBase}
+                      onFocus={focusOn} onBlur={focusOff}
+                    />
+                    <span style={{ fontSize:"0.73rem", color:"#9ca3af" }}>Standard unit used for reporting results</span>
+                  </div>
+
+                  <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+                    <label style={labelBase}>Status</label>
+                    <button
+                      type="button"
+                      onClick={() => setIsActive(!isActive)}
+                      style={{
+                        display:"inline-flex", alignItems:"center", justifyContent:"center", gap:12,
+                        padding:"11px 22px", borderRadius:12, alignSelf:"flex-start",
+                        border:`2px solid ${isActive?"#10b981":"#e5e7eb"}`,
+                        background: isActive?"#f0fdf4":"#f9fafb",
+                        color: isActive?"#065f46":"#6b7280",
+                        fontWeight:700, fontSize:"0.92rem",
+                        cursor:"pointer", fontFamily:T.font,
+                        transition:"all .2s ease",
+                        boxShadow: isActive?"0 2px 8px rgba(16,185,129,.2)":"none",
+                      }}
+                    >
+                      {isActive
+                        ? <ToggleRight size={22} style={{ color:"#10b981" }}/>
+                        : <ToggleLeft size={22} style={{ color:"#9ca3af" }}/>
+                      }
+                      {isActive ? "Active" : "Inactive"}
+                    </button>
+                    <span style={{ fontSize:"0.73rem", color:"#9ca3af" }}>Click to toggle the active status</span>
+                  </div>
                 </div>
               </div>
 
               <hr style={{ border:"none", height:2, background:"#f3f4f6", borderRadius:2, margin:"0 0 28px" }}/>
-
-              {/* Section: Status toggle */}
-              <div style={{ marginBottom:32 }}>
-                <p style={{ ...labelBase, margin:"0 0 14px" }}>Status</p>
-                <button
-                  type="button"
-                  onClick={() => setIsActive(!isActive)}
-                  style={{
-                    display:"inline-flex", alignItems:"center", gap:12,
-                    padding:"12px 22px", borderRadius:12,
-                    border:`2px solid ${isActive?"#10b981":"#e5e7eb"}`,
-                    background: isActive?"#f0fdf4":"#f9fafb",
-                    color: isActive?"#065f46":"#6b7280",
-                    fontWeight:700, fontSize:"0.92rem",
-                    cursor:"pointer", fontFamily:T.font,
-                    transition:"all .2s ease",
-                    boxShadow: isActive?"0 2px 8px rgba(16,185,129,.2)":"none",
-                  }}
-                >
-                  {isActive
-                    ? <ToggleRight size={22} style={{ color:"#10b981" }}/>
-                    : <ToggleLeft size={22} style={{ color:"#9ca3af" }}/>
-                  }
-                  {isActive ? "Active" : "Inactive"}
-                </button>
-                <span style={{ display:"block", marginTop:8, fontSize:"0.78rem", color:"#9ca3af" }}>
-                  Click to toggle the active status
-                </span>
-              </div>
 
               {/* Actions */}
               <div style={{ display:"flex", gap:12, justifyContent:"flex-end", paddingTop:20, borderTop:"2px solid #f3f4f6" }}>

@@ -332,6 +332,7 @@ export default function Reports() {
   };
 
   const handleSubmitReport = async () => {
+    if (loading) return;
     try {
       setLoading(true);
 
@@ -416,6 +417,8 @@ export default function Reports() {
   const handleSubmit = async (e) => {
 
     e.preventDefault();
+
+    if (loading) return;
 
     if (selectedTests.length === 0) {
       setMessage("Please select at least one test");
@@ -598,7 +601,7 @@ export default function Reports() {
                   value={formData.dateOfBirth}
                   onChange={(e) => {
                     const dob = e.target.value;
-                    const result = calculateAge(dob);
+                    const result = calculateAge(dob) || { age: "", ageType: "year" };
 
                     setFormData({
                       ...formData,

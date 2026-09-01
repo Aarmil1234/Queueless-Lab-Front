@@ -8,7 +8,7 @@ import {
   ChevronDown,
   LockKeyhole,
 } from "lucide-react";
-import { apiRequest } from "../reusable";
+import { apiRequest, clearSession } from "../reusable";
 
 const Navbar = ({ collapsed }) => {
   const navigate = useNavigate();
@@ -25,10 +25,10 @@ const Navbar = ({ collapsed }) => {
 
   useEffect(() => {
     const name =
-      sessionStorage.getItem("hospitalName");
+      localStorage.getItem("hospitalName");
 
     const owner =
-      sessionStorage.getItem("ownerName");
+      localStorage.getItem("ownerName");
 
     setHospitalName(
       name || "My Lab"
@@ -434,12 +434,8 @@ const Navbar = ({ collapsed }) => {
 
       if (willLogout) {
 
-        // Clear session
-        sessionStorage.clear();
-
-        // Remove cookie
-        document.cookie =
-          "hospitalId=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        // Clear session + gate cookie
+        clearSession();
 
         // Redirect
         navigate("/login");

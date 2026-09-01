@@ -13,6 +13,7 @@ import {
   Navigate,
 } from "react-router-dom";
 import { ReportsProvider } from "./context/ReportContext.jsx";
+import { isSessionValid } from "./reusable";
 import "./Scss/Style.scss";
 import "bootstrap/dist/css/bootstrap.min.css";
 import UnknownPage from "./UnknownPage.jsx";
@@ -72,7 +73,11 @@ const AppRoutes = () => {
           <Route
             path="/"
             element={
-              hospitalId || isAdmin ? <Dashboard /> : <Navigate to="/login" />
+              isAdmin || (hospitalId && isSessionValid()) ? (
+                <Dashboard />
+              ) : (
+                <Navigate to="/login" />
+              )
             }
           />
           <Route path="/reports" element={<Reports />} />

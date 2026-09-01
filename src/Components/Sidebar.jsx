@@ -14,19 +14,22 @@ import {
 
 import { apiRequest } from "../reusable";
 
+// Routes that live under the "Settings" dropdown
+const SETTINGS_PATHS = ["/addtests", "/addparam", "/addsubparam", "/addrange"];
+
 const Sidebar = ({ collapsed }) => {
   const location = useLocation();
   const [hospitalName, setHospitalName] = useState("");
   const [openDropdown, setOpenDropdown] = useState(null);
 
 useEffect(() => {
-  const name = sessionStorage.getItem("hospitalName");
+  const name = localStorage.getItem("hospitalName");
   setHospitalName(name || "My Lab");
 }, []);
 
-  // Auto-open settings dropdown when inside its routes
+  // Auto-open settings dropdown when inside any of its routes
   useEffect(() => {
-    if (location.pathname === "/addparam" || location.pathname === "/addrange") {
+    if (SETTINGS_PATHS.includes(location.pathname)) {
       setOpenDropdown("settings");
     }
   }, [location.pathname]);
@@ -99,6 +102,17 @@ useEffect(() => {
 
   return (
     <div style={sidebarStyle}>
+      <style>{`
+        .ql-side-link { transition: background .18s ease, color .18s ease; }
+        .ql-side-link:not(.active):hover {
+          background: rgba(255,255,255,0.12);
+          color: #ffffff;
+        }
+        .ql-side-sub:not(.active):hover {
+          background: rgba(255,255,255,0.10);
+          color: #ffffff;
+        }
+      `}</style>
       <div>
         {/* Header */}
         <div style={headerStyle}>
@@ -131,6 +145,7 @@ useEffect(() => {
               return (
                 <div key={item.id}>
                   <div
+                    className="ql-side-link"
                     onClick={() => setOpenDropdown(isOpen ? null : item.id)}
                     style={{
                       display: "flex",
@@ -164,6 +179,7 @@ useEffect(() => {
                           <Link
                             key={child.path}
                             to={child.path}
+                            className={isActive ? "ql-side-sub active" : "ql-side-sub"}
                             style={{
                               display: "block",
                               padding: "10px 14px",
@@ -171,6 +187,7 @@ useEffect(() => {
                               borderRadius: "8px",
                               textDecoration: "none",
                               fontSize: "0.9rem",
+                              transition: "background .18s ease, color .18s ease",
                               background: isActive ? "white" : "transparent",
                               color: isActive ? "#667eea" : "rgba(255,255,255,0.8)",
                             }}
@@ -192,6 +209,7 @@ useEffect(() => {
               <Link
                 key={item.path}
                 to={item.path}
+                className={isActive ? "ql-side-link active" : "ql-side-link"}
                 style={{
                   display: "flex",
                   alignItems: "center",

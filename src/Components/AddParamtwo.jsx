@@ -48,10 +48,7 @@ export default function AddParameterPage() {
   const [messageType, setMessageType] = useState("");
 
   const [modalTestId, setModalTestId] = useState(""); // test report chosen inside the modal
-  const [code, setCode]       = useState("");
   const [name, setName]       = useState("");
-  const [category, setCategory] = useState("BIOCHEMISTRY");
-  const [unit, setUnit]       = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId]   = useState(null);
 
@@ -99,8 +96,7 @@ export default function AddParameterPage() {
   };
 
   const handleEdit = (p) => {
-    setEditId(p._id); setCode(p.code); setName(p.name);
-    setCategory(p.category); setUnit(p.unit);
+    setEditId(p._id); setName(p.name);
     setModalTestId(p.testReportId || selectedTest?._id || "");
     setIsEditing(true); setShowModal(true);
   };
@@ -119,8 +115,8 @@ export default function AddParameterPage() {
   };
 
   const resetForm = () => {
-    setCode(""); setName(""); setCategory("BIOCHEMISTRY");
-    setUnit(""); setIsEditing(false); setEditId(null);
+    setName("");
+    setIsEditing(false); setEditId(null);
     setModalTestId(selectedTest?._id || "");
   };
 
@@ -133,10 +129,11 @@ export default function AddParameterPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (loading) return;
     if (!modalTestId) return;
     setLoading(true); setMessage(""); setMessageType("");
     const payload = {
-      code, name, category, type: "NUMERIC", unit,
+      name, type: "NUMERIC",
       testReportId: modalTestId,
     };
     try {
@@ -284,7 +281,7 @@ export default function AddParameterPage() {
           <table style={{ width:"100%", borderCollapse:"collapse" }}>
             <thead>
               <tr style={{ background:T.grad }}>
-                {["Code","Parameter Name","Unit","Actions"].map(h => (
+                {["Parameter Name","Actions"].map(h => (
                   <th key={h} style={{
                     padding:"15px 18px", textAlign:"left",
                     fontSize:"0.78rem", fontWeight:700, color:"white",
@@ -296,7 +293,7 @@ export default function AddParameterPage() {
             <tbody>
               {!selectedTest ? (
                 <tr>
-                  <td colSpan={4} style={{ padding:"56px 24px", textAlign:"center" }}>
+                  <td colSpan={2} style={{ padding:"56px 24px", textAlign:"center" }}>
                     <div style={{
                       width:56, height:56, borderRadius:"50%", background:"#f3f4f6",
                       display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px",
@@ -310,13 +307,13 @@ export default function AddParameterPage() {
                 </tr>
               ) : loadingParams ? (
                 <tr>
-                  <td colSpan={4} style={{ padding:"56px 24px", textAlign:"center", color:"#9ca3af", fontWeight:500 }}>
+                  <td colSpan={2} style={{ padding:"56px 24px", textAlign:"center", color:"#9ca3af", fontWeight:500 }}>
                     Loading parameters…
                   </td>
                 </tr>
               ) : parameters.length === 0 ? (
                 <tr>
-                  <td colSpan={4} style={{ padding:"56px 24px", textAlign:"center" }}>
+                  <td colSpan={2} style={{ padding:"56px 24px", textAlign:"center" }}>
                     <div style={{
                       width:56, height:56, borderRadius:"50%", background:"#f3f4f6",
                       display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 14px",
@@ -336,24 +333,8 @@ export default function AddParameterPage() {
                   onMouseEnter={e => e.currentTarget.style.background="#f5f3ff"}
                   onMouseLeave={e => e.currentTarget.style.background= i % 2 === 0 ? "white" : "#fafafa"}
                 >
-                  <td style={{ padding:"16px 18px" }}>
-                    <span style={{
-                      fontWeight:800, color:"#667eea",
-                      fontFamily:"'DM Mono','Courier New',monospace", fontSize:"0.9rem",
-                      background:"#f0edff", padding:"4px 10px", borderRadius:8,
-                      border:"1px solid #e0d9ff",
-                    }}>{p.code}</span>
-                  </td>
                   <td style={{ padding:"16px 18px", fontWeight:600, color:"#1f2937", fontSize:"0.92rem" }}>{p.name}</td>
 
-                  <td style={{ padding:"16px 18px" }}>
-                    <span style={{
-                      background:"#f0fdf4", color:"#16a34a",
-                      border:"1px solid #bbf7d0",
-                      padding:"3px 10px", borderRadius:20,
-                      fontSize:"0.82rem", fontWeight:600, display:"inline-block",
-                    }}>{p.unit}</span>
-                  </td>
                   <td style={{ padding:"16px 18px" }}>
                     <div style={{ display:"flex", gap:8 }}>
                       <button
@@ -469,21 +450,8 @@ export default function AddParameterPage() {
                   <span style={field.hint}>Which test this parameter belongs to</span>
                 </div>
 
-                {/* Code */}
-                <div style={field.wrap}>
-                  <label style={field.label}>Parameter Code *</label>
-                  <input
-                    type="text" value={code} disabled={isEditing}
-                    onChange={e => setCode(e.target.value.toUpperCase())}
-                    placeholder="e.g., GLU, HGB"
-                    style={{ ...field.input, ...(isEditing ? { opacity:.6, cursor:"not-allowed" } : {}) }}
-                    onFocus={focusOn} onBlur={focusOff}
-                  />
-                  <span style={field.hint}>Short unique identifier (max 10 chars)</span>
-                </div>
-
                 {/* Name */}
-                <div style={field.wrap}>
+                <div style={{ ...field.wrap, gridColumn:"span 2" }}>
                   <label style={field.label}>Parameter Name *</label>
                   <input
                     type="text" value={name} required
@@ -492,33 +460,6 @@ export default function AddParameterPage() {
                     style={field.input}
                     onFocus={focusOn} onBlur={focusOff}
                   />
-                </div>
-
-                {/* Category */}
-                <div style={{ ...field.wrap, position:"relative" }}>
-                  <label style={field.label}>Category</label>
-                  <select value={category} onChange={e => setCategory(e.target.value)}
-                    style={{ ...field.input, appearance:"none", paddingRight:40, cursor:"pointer" }}
-                    onFocus={focusOn} onBlur={focusOff}
-                  >
-                    {["BIOCHEMISTRY","HEMATOLOGY","IMMUNOLOGY","MICROBIOLOGY","SEROLOGY"].map(c => (
-                      <option key={c} value={c}>{c.charAt(0) + c.slice(1).toLowerCase()}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={16} style={{ position:"absolute", right:14, bottom:14, color:"#9ca3af", pointerEvents:"none" }}/>
-                </div>
-
-                {/* Unit */}
-                <div style={field.wrap}>
-                  <label style={field.label}>Unit of Measurement *</label>
-                  <input
-                    type="text" value={unit} required
-                    onChange={e => setUnit(e.target.value)}
-                    placeholder="e.g., mg/dL, g/dL, cells/µL"
-                    style={field.input}
-                    onFocus={focusOn} onBlur={focusOff}
-                  />
-                  <span style={field.hint}>Standard unit used for reporting results</span>
                 </div>
               </div>
 

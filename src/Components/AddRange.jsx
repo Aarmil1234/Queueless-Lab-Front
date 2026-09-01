@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import Swal from "sweetalert2";
 import { apiRequest } from "../reusable";
 import { Plus, ArrowLeft, Settings, Pencil, Trash2, ChevronDown, Sliders } from "lucide-react";
 
@@ -258,6 +259,7 @@ export default function ParameterRangeManager() {
   const [isEditing, setIsEditing] = useState(false);
   const [editId, setEditId] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   // ── fetch helpers ──────────────────────────────────────────────────────────
   const fetchParameters = async () => {
@@ -337,7 +339,16 @@ export default function ParameterRangeManager() {
 };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this range?")) return;
+    const result = await Swal.fire({
+      title: "Delete this range?",
+      text: "This action cannot be undone.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, delete it",
+      cancelButtonText: "Cancel",
+      confirmButtonColor: "#ef4444",
+    });
+    if (!result.isConfirmed) return;
     try {
       await apiRequest("delete", `/api/parameter/defaultParameter/${id}`);
       fetchRanges(parameterId, subParameterId);
@@ -354,8 +365,15 @@ export default function ParameterRangeManager() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
     if (!parameterId || !subParameterId) {
-      alert("Select parameter & sub parameter"); return;
+      Swal.fire({
+        icon: "warning",
+        title: "Missing selection",
+        text: "Select a parameter and sub parameter first.",
+        confirmButtonText: "OK",
+      });
+      return;
     }
     const payload = {
       parameterId, subCategoryId: subParameterId,
@@ -367,6 +385,7 @@ export default function ParameterRangeManager() {
       ageType,
     };
     try {
+      setSubmitting(true);
       if (isEditing) {
         await apiRequest("put", `/api/parameter/defaultParameter/${editId}`, payload);
         console.log("Updated range:", editId, payload);
@@ -376,11 +395,15 @@ export default function ParameterRangeManager() {
       }
       setView("list"); resetForm();
       fetchRanges(parameterId, subParameterId);
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const getLabel = (item) =>
-    `${item?.name || item?.subParameterName} (${item?.code || item?.subParameterCode})`;
+    `${item?.name || item?.subParameterName}`;
 
   // ── render ─────────────────────────────────────────────────────────────────
   return (
@@ -438,7 +461,7 @@ export default function ParameterRangeManager() {
                   >
                     <option value="">Select Parameter…</option>
                     {parameters.map((p) => (
-                      <option key={p._id} value={p._id}>{p.name} ({p.code})</option>
+                      <option key={p._id} value={p._id}>{p.name}</option>
                     ))}
                   </select>
                   <ChevronDown size={16} style={css.chevron} />
@@ -630,11 +653,16 @@ export default function ParameterRangeManager() {
 
                 <button
                   type="submit"
-                  style={css.btnSubmit}
-                  onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 20px rgba(16,185,129,.45)"; }}
+                  disabled={submitting}
+                  style={{ ...css.btnSubmit, ...(submitting ? { opacity: 0.65, cursor: "not-allowed" } : {}) }}
+                  onMouseEnter={e => { if (submitting) return; e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 20px rgba(16,185,129,.45)"; }}
                   onMouseLeave={e => { e.currentTarget.style.transform = ""; e.currentTarget.style.boxShadow = "0 4px 12px rgba(16,185,129,.35)"; }}
                 >
-                  {isEditing ? <><Pencil size={16} /> Update Range</> : <><Plus size={16} /> Save Range</>}
+                  {submitting
+                    ? "Saving…"
+                    : isEditing
+                      ? <><Pencil size={16} /> Update Range</>
+                      : <><Plus size={16} /> Save Range</>}
                 </button>
               </div>
             </form>

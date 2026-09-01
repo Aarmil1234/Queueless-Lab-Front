@@ -1,6 +1,7 @@
 import React, { useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import "../Scss/Style.scss";
-import { apiRequest } from "../reusable";
+import { apiRequest, setSession } from "../reusable";
 import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 
@@ -9,6 +10,7 @@ const Login = () => {
 
   const [mobile, setMobile] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -50,31 +52,14 @@ const Login = () => {
       const user = payload?.user;
 
       if (token) {
-        // Store session
-        sessionStorage.setItem("token", token);
+        // Store session (localStorage + 24h expiry, shared across tabs)
+        setSession({ token, user });
 
-        sessionStorage.setItem(
-          "user",
-          JSON.stringify(user)
-        );
-
-        sessionStorage.setItem(
-          "ownerName",
-          user?.ownerName || ""
-        );
-
-        sessionStorage.setItem(
-          "hospitalName",
-          user?.hospitalName ||
-            user?.labName ||
-            ""
-        );
-
-        // Optional cookie
+        // Keep the gate cookie in step with the 24h session
         const expires = new Date();
 
         expires.setDate(
-          expires.getDate() + 7
+          expires.getDate() + 1
         );
 
         document.cookie =
@@ -702,18 +687,54 @@ const Login = () => {
                   Password
                 </label>
 
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) =>
-                    setPassword(
-                      e.target.value
-                    )
-                  }
-                  className="form-control border-dark"
-                  placeholder="Enter Password"
-                  required
-                />
+                <div style={{ position: "relative" }}>
+
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) =>
+                      setPassword(
+                        e.target.value
+                      )
+                    }
+                    className="form-control border-dark"
+                    placeholder="Enter Password"
+                    style={{ paddingRight: "42px" }}
+                    required
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setShowPassword(
+                        (prev) => !prev
+                      )
+                    }
+                    aria-label={
+                      showPassword
+                        ? "Hide password"
+                        : "Show password"
+                    }
+                    style={{
+                      position: "absolute",
+                      top: "50%",
+                      right: "10px",
+                      transform: "translateY(-50%)",
+                      border: "none",
+                      background: "transparent",
+                      padding: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      cursor: "pointer",
+                      color: "#6b7280",
+                    }}
+                  >
+                    {showPassword
+                      ? <EyeOff size={18} />
+                      : <Eye size={18} />}
+                  </button>
+
+                </div>
 
               </div>
 
