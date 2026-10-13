@@ -13,6 +13,9 @@ const ReportHistory = () => {
   const [hospitalName, setHospitalName] = useState("");
   const [busyAction, setBusyAction] = useState(null); // "print" | "download" | null
   const busy = busyAction !== null;
+  const [filter, setFilter] = useState("lastWeek");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
 
   useEffect(() => {
     const name = localStorage.getItem("hospitalName");
@@ -104,13 +107,19 @@ const ReportHistory = () => {
 
   useEffect(() => {
     fetchReports();
-  }, []);
+  }, [filter, startDate, endDate]);
 
   const fetchReports = async () => {
     try {
       setLoading(true);
 
-      const res = await apiRequest("get", "/api/patient/submittedReportPatient");
+      let url = `/api/patient/submittedReportPatient?filter=${filter}`;
+
+      if (filter === "custom" && startDate && endDate) {
+        url += `&startDate=${startDate}&endDate=${endDate}`;
+      }
+
+      const res = await apiRequest("get", url);
 
       const data =
         res?.data?.data ||
@@ -151,9 +160,6 @@ const ReportHistory = () => {
         setTestsLoading(false);
         return;
       }
-
-      console.log("Lab ID:", patient.labId);
-
 
       const res = await apiRequest(
         "get",
@@ -198,18 +204,9 @@ const ReportHistory = () => {
 
     } catch (err) {
       console.log("Status:", err.response?.status);
-
       console.log("Full Response:", err.response?.data);
-
-      console.log(
-        "Backend Error:",
-        JSON.stringify(err.response?.data, null, 2)
-      );
-
-      console.log(
-        "Backend Data:",
-        JSON.stringify(err.response?.data?.data, null, 2)
-      );
+      console.log("Backend Error:", JSON.stringify(err.response?.data, null, 2));
+      console.log("Backend Data:", JSON.stringify(err.response?.data?.data, null, 2));
     } finally {
       setTestsLoading(false);
     }
@@ -228,6 +225,80 @@ const ReportHistory = () => {
     padding: "10px",
     textAlign: "center",
   };
+
+  // --- Filter toolbar styles (matches .reports-header / .reports-form-grid design tokens) ---
+  const filterBarStyle = {
+    display: "flex",
+    alignItems: "flex-end",
+    flexWrap: "wrap",
+    gap: "24px",
+    background: "#ffffff",
+    borderRadius: "20px",
+    boxShadow: "0 10px 40px rgba(0, 0, 0, 0.15)",
+    padding: "24px 35px",
+    marginBottom: "30px",
+    animation: "fadeInUp 0.6s ease",
+  };
+
+  const filterFieldStyle = {
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px",
+  };
+
+  const filterLabelStyle = {
+    fontSize: "0.85rem",
+    fontWeight: 700,
+    color: "#374151",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+  };
+
+  const filterSelectStyle = {
+    minWidth: "180px",
+    padding: "12px 40px 12px 16px",
+    border: "2px solid #e5e7eb",
+    borderRadius: "12px",
+    fontSize: "15px",
+    fontFamily: "'Inter', sans-serif",
+    background:
+      "#f9fafb url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='%236b7280' d='M8 11L3 6h10z'/%3E%3C/svg%3E\") no-repeat right 14px center",
+    color: "#1f2937",
+    appearance: "none",
+    cursor: "pointer",
+    transition: "all 0.3s ease",
+    outline: "none",
+  };
+
+  const filterDateStyle = {
+    minWidth: "160px",
+    padding: "12px 16px",
+    border: "2px solid #e5e7eb",
+    borderRadius: "12px",
+    fontSize: "15px",
+    fontFamily: "'Inter', sans-serif",
+    background: "#f9fafb",
+    color: "#1f2937",
+    transition: "all 0.3s ease",
+    outline: "none",
+  };
+
+  const handleFilterFocus = (e) => {
+    e.target.style.borderColor = "#667eea";
+    e.target.style.boxShadow = "0 0 0 4px rgba(102, 126, 234, 0.1)";
+  };
+
+  const handleFilterBlur = (e) => {
+    e.target.style.borderColor = "#e5e7eb";
+    e.target.style.boxShadow = "none";
+  };
+
+  const filterOptions = [
+    { value: "today", label: "Today" },
+    { value: "thisWeek", label: "This Week" },
+    { value: "thisMonth", label: "This Month" },
+    { value: "custom", label: "Custom Range" },
+  ];
 
   const filteredPatients = useMemo(() => {
     if (!search) return patients;
@@ -521,6 +592,78 @@ const ReportHistory = () => {
           </div>
         </div>
 
+        <div style={filterBarStyle}>
+          <div style={filterFieldStyle}>
+            <label style={filterLabelStyle} htmlFor="report-date-filter">
+              Date Range
+            </label>
+            <select
+              id="report-date-filter"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              onFocus={handleFilterFocus}
+              onBlur={handleFilterBlur}
+              style={filterSelectStyle}
+            >
+              {filterOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {filter === "custom" && (
+            <>
+              <div style={filterFieldStyle}>
+                <label style={filterLabelStyle} htmlFor="report-start-date">
+                  From
+                </label>
+                <input
+                  id="report-start-date"
+                  type="date"
+                  value={startDate}
+                  max={endDate || undefined}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  onFocus={handleFilterFocus}
+                  onBlur={handleFilterBlur}
+                  style={filterDateStyle}
+                />
+              </div>
+
+              <div style={filterFieldStyle}>
+                <label style={filterLabelStyle} htmlFor="report-end-date">
+                  To
+                </label>
+                <input
+                  id="report-end-date"
+                  type="date"
+                  value={endDate}
+                  min={startDate || undefined}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  onFocus={handleFilterFocus}
+                  onBlur={handleFilterBlur}
+                  style={filterDateStyle}
+                />
+              </div>
+            </>
+          )}
+
+          {filter === "custom" && (!startDate || !endDate) && (
+            <span
+              style={{
+                fontSize: "0.85rem",
+                fontWeight: 600,
+                color: "#ef4444",
+                alignSelf: "center",
+                paddingBottom: "12px",
+              }}
+            >
+              Select both a start and end date
+            </span>
+          )}
+        </div>
+
         {loading ? (
           <div className="reports-form-card">Loading reports...</div>
         ) : (
@@ -541,37 +684,33 @@ const ReportHistory = () => {
                   <td colSpan="5">No submitted reports</td>
                 </tr>
               ) : (
-                filteredPatients.map((p) => {
-
-                  return (
-                    <tr key={p._id}>
-                      <td>{p.name}</td>
-                      <td>{p.mobile}</td>
-                      <td>
-                        {new Date(p.createdAt).toLocaleString("en-GB", {
-                          day: "2-digit",
-                          month: "2-digit",
-                          year: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          second: "2-digit",
-                          hour12: false,
-                        })}
-                      </td>
-                      <td>{p.referredByDoctor}</td>
-                      <td>{p.submittedTests?.length || p.testNames.length || 0}</td>
-                      <td>
-                        <button
-                          className="btn-small btn-success"
-                          onClick={() => openPatientTests(p)}
-                        >
-                          View Tests
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                }
-                )
+                filteredPatients.map((p) => (
+                  <tr key={p._id}>
+                    <td>{p.name}</td>
+                    <td>{p.mobile}</td>
+                    <td>
+                      {new Date(p.createdAt).toLocaleString("en-GB", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                        hour12: false,
+                      })}
+                    </td>
+                    <td>{p.referredByDoctor}</td>
+                    <td>{p.submittedTests?.length || p.testNames.length || 0}</td>
+                    <td>
+                      <button
+                        className="btn-small btn-success"
+                        onClick={() => openPatientTests(p)}
+                      >
+                        View Tests
+                      </button>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
