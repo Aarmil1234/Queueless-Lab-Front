@@ -1050,6 +1050,43 @@
   }
 }
 
+.super-admin-metric-card {
+  position: relative;
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  border: 1px solid rgba(102, 126, 234, .12);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+
+  > svg { color: #2674ff; }
+  &:hover { transform: translateY(-3px); border-color: rgba(102, 126, 234, .42); box-shadow: 0 14px 30px rgba(48, 57, 90, .14); }
+  &:focus-visible { outline: 3px solid rgba(102, 126, 234, .5); outline-offset: 3px; }
+}
+
+.super-admin-card-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-top: 11px;
+  color: #5968d8;
+  font-size: .78rem;
+  font-weight: 700;
+}
+
+.super-admin-metric-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 12px;
+  strong { color: #273247; font-size: 2.5rem; line-height: 1; }
+  span { color: #6b7280; }
+}
+
 @media (max-width: 768px) {
   .reports-table.super-admin-labs-table .super-admin-lab-actions {
     gap: 7px;

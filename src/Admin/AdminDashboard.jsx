@@ -18,13 +18,13 @@ export default function AdminDashboard() {
 function SuperAdminWorkspace() {
   const location = useLocation();
   const navigate = useNavigate();
-  const sectionFromPath = location.pathname.includes("/labs") ? "labs" : location.pathname.includes("/settings") ? "settings" : "dashboard";
+  const sectionFromPath = location.pathname.includes("/pending-tests") ? "pending-tests" : location.pathname.includes("/bookings") ? "bookings" : location.pathname.includes("/reports") ? "reports" : location.pathname.includes("/tests") ? "tests" : location.pathname.includes("/labs") ? "labs" : location.pathname.includes("/settings") ? "settings" : "dashboard";
   const [section, setSection] = useState(sectionFromPath);
-  const [profile, setProfile] = useState(null);
   const [filter, setFilter] = useState("today");
   const [counts, setCounts] = useState(null);
   const [bookings, setBookings] = useState([]);
   const [labs, setLabs] = useState([]);
+  const [metricLabs, setMetricLabs] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -65,7 +65,6 @@ function SuperAdminWorkspace() {
     try {
       const result = payloadOf(await API.get("/api/super-admin/me"));
       const user = result?.user || result;
-      setProfile(user);
       localStorage.setItem("superAdminUser", JSON.stringify(user));
       window.dispatchEvent(new Event("superAdminProfileUpdated"));
     } catch (e) { setError(e?.response?.data?.message || "Could not load administrator profile."); }
@@ -91,9 +90,30 @@ function SuperAdminWorkspace() {
     } catch (e) { setError(e?.response?.data?.message || "Could not load labs."); }
     finally { setLoading(false); }
   }, []);
+  const loadMetricLabs = useCallback(async () => {
+    setLoading(true); setError("");
+    try {
+      const result = payloadOf(await API.get("/api/super-admin/labs?page=1&limit=100"));
+      const totalPages = Number(result?.pagination?.totalPages || 1);
+      const laterPages = await Promise.all(Array.from({ length: Math.max(0, totalPages - 1) }, (_, index) => API.get(`/api/super-admin/labs?page=${index + 2}&limit=100`)));
+      const labList = [
+        ...pickArray(result),
+        ...laterPages.flatMap(response => pickArray(payloadOf(response))),
+      ];
+      const rows = await Promise.all(labList.map(async lab => {
+        try {
+          const detail = payloadOf(await API.get(`/api/super-admin/labs/${lab._id}?filter=${filter}`));
+          return { ...lab, ...(detail?.lab || {}), ...(detail?.counts || {}) };
+        } catch { return lab; }
+      }));
+      setMetricLabs(rows);
+    } catch (e) { setError(e?.response?.data?.message || "Could not load lab metrics."); }
+    finally { setLoading(false); }
+  }, [filter]);
   useEffect(() => { loadProfile(); }, [loadProfile]);
-  useEffect(() => { if (section === "dashboard") loadDashboard(); }, [section, loadDashboard]);
+  useEffect(() => { if (["dashboard", "bookings"].includes(section)) loadDashboard(); }, [section, loadDashboard]);
   useEffect(() => { if (section === "labs") loadLabs(1); }, [section, loadLabs]);
+  useEffect(() => { if (["reports", "tests", "pending-tests"].includes(section)) loadMetricLabs(); }, [section, loadMetricLabs]);
 
   const notify = message => { setToast(message); window.setTimeout(() => setToast(""), 3000); };
   const openLab = async lab => {
@@ -132,7 +152,7 @@ function SuperAdminWorkspace() {
     const matches = `${lab.labName} ${lab.ownerName} ${lab.email} ${lab.mobileNumber}`.toLowerCase().includes(search.toLowerCase());
     return matches && (statusFilter === "all" || (statusFilter === "active" ? lab.isActive : !lab.isActive));
   }), [labs, search, statusFilter]);
-  const heading = selectedLab ? selectedLab.labName : section === "dashboard" ? "Platform overview" : section === "labs" ? "Lab management" : "Account settings";
+  const heading = selectedLab ? selectedLab.labName : section === "dashboard" ? "Platform overview" : section === "labs" ? "Lab management" : section === "bookings" ? "Bookings by lab" : section === "reports" ? "Reports by lab" : section === "tests" ? "Tests by lab" : section === "pending-tests" ? "Pending tests by lab" : "Account settings";
   const metrics = [
     { key: "totalLabs", label: "Total labs", icon: Building2, note: `${counts?.newLabs ?? 0} new in period` },
     { key: "activeLabs", label: "Active labs", icon: Building2, note: `${counts?.inactiveLabs ?? 0} inactive` },
@@ -155,11 +175,14 @@ function SuperAdminWorkspace() {
     {loading && <div className="text-center text-muted p-5"><RefreshCw size={18}/> Loading workspace data…</div>}
 
     {!loading && section === "dashboard" && <>
-      <div className="report-header-section mb-4"><h3 className="h4 mb-1">Welcome back, {profile?.name || "Super Admin"}</h3><p className="mb-0 text-muted">Here’s what’s happening across your lab network. <span className="badge bg-primary text-capitalize ms-2">{filter}</span></p></div>
-      <div className="row g-3 mb-4">{metrics.map(item => { const Icon = item.icon; return <div className="col-md-6 col-xl-4" key={item.key}><article className="report-header-section h-100 mb-0 p-4"><Icon size={22} className="mb-2"/><span className="d-block text-muted">{item.label}</span><b className="d-block fs-2 text-dark">{counts?.[item.key] ?? "—"}</b><small className="text-muted">{item.note}</small></article></div>; })}</div>
-      <div className="reports-header"><h2>Bookings by lab</h2><button className="btn-report btn-secondary" onClick={loadDashboard}><RefreshCw size={16}/> Refresh</button></div>
-      <div className="table-responsive"><table className="reports-table"><thead><tr><th>Lab</th><th>Owner</th><th>Status</th><th>Bookings</th><th>Action</th></tr></thead><tbody>{bookings.length ? bookings.map(row => <tr key={row.labId}><td>{row.labName}</td><td>{row.ownerName}</td><td><span className={`badge ${row.isActive ? "bg-success" : "bg-secondary"}`}>{row.isActive ? "Active" : "Inactive"}</span></td><td>{row.totalBookings ?? 0}</td><td><button className="btn-report btn-primary" onClick={() => { goSection("labs"); setTimeout(() => openLab({ _id: row.labId, labName: row.labName, ownerName: row.ownerName, isActive: row.isActive }), 0); }}>View <ChevronRight size={14}/></button></td></tr>) : <tr><td colSpan="5" className="text-center">No booking activity for this period.</td></tr>}</tbody></table></div>
+      
+      <div className="row g-3 mb-4">{metrics.map(item => { const Icon = item.icon; const destination = item.key === "totalLabs" || item.key === "activeLabs" ? "labs" : item.key === "totalBookings" ? "bookings" : item.key === "totalReports" ? "reports" : item.key === "totalTests" ? "tests" : "pending-tests"; return <div className="col-md-6 col-xl-4" key={item.key}><button type="button" className="report-header-section super-admin-metric-card h-100 mb-0 p-4" onClick={() => { if (destination === "labs") setStatusFilter(item.key === "activeLabs" ? "active" : "all"); goSection(destination); }} aria-label={`View ${item.label} list`}><Icon size={22} className="mb-2"/><span className="d-block text-muted">{item.label}</span><b className="d-block fs-2 text-dark">{counts?.[item.key] ?? "—"}</b><small className="text-muted">{item.note}</small><span className="super-admin-card-hint">View list <ChevronRight size={14}/></span></button></div>; })}</div>
+      
     </>}
+
+    {!loading && section === "bookings" && <><div className="reports-header"><div><h2>Bookings by lab</h2><p className="mb-0 mt-1 text-muted">Lab booking totals for the selected period</p></div><select className="form-control" style={{ width: 160 }} value={filter} onChange={e => setFilter(e.target.value)}>{filters.map(item => <option key={item} value={item}>{item[0].toUpperCase() + item.slice(1)}</option>)}</select></div><div className="table-responsive"><table className="reports-table"><thead><tr><th>Lab</th><th>Owner</th><th>Status</th><th>Total bookings</th><th>Action</th></tr></thead><tbody>{bookings.length ? bookings.map(row => <tr key={row.labId}><td>{row.labName}</td><td>{row.ownerName}</td><td><span className={`badge ${row.isActive ? "bg-success" : "bg-secondary"}`}>{row.isActive ? "Active" : "Inactive"}</span></td><td>{row.totalBookings ?? 0}</td><td><button className="btn-report btn-primary" onClick={() => { goSection("labs"); setTimeout(() => openLab({ _id: row.labId, labName: row.labName, ownerName: row.ownerName, isActive: row.isActive }), 0); }}>View lab</button></td></tr>) : <tr><td colSpan="5" className="text-center">No booking activity for this period.</td></tr>}</tbody></table></div></>}
+
+    {!loading && ["reports", "tests", "pending-tests"].includes(section) && <><div className="reports-header"><div><h2>{heading}</h2><p className="mb-0 mt-1 text-muted">Per-lab totals for the selected period</p></div><div className="d-flex gap-2"><select className="form-control" style={{ width: 160 }} value={filter} onChange={e => setFilter(e.target.value)}>{filters.map(item => <option key={item} value={item}>{item[0].toUpperCase() + item.slice(1)}</option>)}</select><button className="btn-report btn-secondary" onClick={loadMetricLabs} aria-label="Refresh list"><RefreshCw size={16}/></button></div></div><div className="table-responsive"><table className="reports-table"><thead><tr><th>Lab</th><th>Owner</th><th>Status</th><th>{section === "reports" ? "Reports" : section === "tests" ? "Total tests" : "Pending tests"}</th><th>Action</th></tr></thead><tbody>{metricLabs.length ? metricLabs.map(lab => <tr key={lab._id}><td>{lab.labName}</td><td>{lab.ownerName}</td><td><span className={`badge ${lab.isActive ? "bg-success" : "bg-secondary"}`}>{lab.isActive ? "Active" : "Inactive"}</span></td><td>{section === "reports" ? lab.totalReports ?? 0 : section === "tests" ? lab.totalTests ?? 0 : lab.pendingTests ?? 0}</td><td><button className="btn-report btn-primary" onClick={() => { goSection("labs"); setTimeout(() => openLab(lab), 0); }}>View lab</button></td></tr>) : <tr><td colSpan="5" className="text-center">No labs found.</td></tr>}</tbody></table></div></>}
 
     {!loading && section === "labs" && !selectedLab && <>
       <div className="reports-header"><h2>Registered Labs</h2><div className="d-flex flex-wrap gap-2"><input className="form-control" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search labs, owners, or email" style={{ width: 280 }}/><select className="form-control" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ width: 160 }}><option value="all">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option></select><button className="btn-report btn-secondary" aria-label="Refresh labs" onClick={() => loadLabs(pagination.page)}><RefreshCw size={16}/></button></div></div>

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { LockKeyhole, ArrowLeft } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import axios from "axios";
 
 const API = axios.create({ baseURL: "https://queueless-lab.onrender.com", timeout: 60000, headers: { "Content-Type": "application/json" } });
@@ -45,7 +45,7 @@ export default function AdminLogin() {
     finally { setBusy(false); }
   };
 
-  const title = { login: "Super Admin sign in", forgot: "Recover access", otp: "Verify your email", reset: "Set a new password" }[mode];
+  const title = { login: "", forgot: "Recover access", otp: "Verify your email", reset: "Set a new password" }[mode];
   return <main className="login-wrapper">
     <section className="registration-container auth-container">
       <div className="form-card">
@@ -67,7 +67,6 @@ export default function AdminLogin() {
             <button className="btn-custom btn-primary w-100 justify-content-center" disabled={busy}>{busy ? "Please wait…" : mode === "login" ? "Sign in" : mode === "forgot" ? "Send verification code" : mode === "otp" ? "Verify code" : "Reset password"}</button>
           </form>
           <div className="text-center mt-3">{mode === "login" ? <button className="btn btn-link" onClick={() => { setMode("forgot"); setError(""); setNotice(""); }}>Forgot password?</button> : <button className="btn btn-link" onClick={() => { setMode("login"); setError(""); setNotice(""); }}><ArrowLeft size={15} /> Back to sign in</button>}</div>
-          <div className="text-center text-muted small border-top pt-3 mt-2"><LockKeyhole size={14} className="me-1" />Authorized administrators only</div>
         </div>
       </div>
     </section>

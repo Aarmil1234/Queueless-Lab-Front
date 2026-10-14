@@ -11,6 +11,9 @@ import {
   ShieldCheck,
   Building2,
   Settings,
+  CalendarDays,
+  ClipboardList,
+  FlaskConical,
 } from "lucide-react";
 
 // Routes that live under the "Settings" dropdown
@@ -56,6 +59,10 @@ useEffect(() => {
   const superAdminMenuItems = [
     { path: "/super-admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
     { path: "/super-admin/labs", icon: Building2, label: "Lab Management" },
+    { path: "/super-admin/bookings", icon: CalendarDays, label: "Bookings" },
+    { path: "/super-admin/reports", icon: FileText, label: "Reports" },
+    { path: "/super-admin/tests", icon: FlaskConical, label: "Tests" },
+    { path: "/super-admin/pending-tests", icon: ClipboardList, label: "Pending Tests" },
     { path: "/super-admin/settings", icon: Settings, label: "Settings" },
   ];
   const menuItems = superAdmin ? superAdminMenuItems : labMenuItems;
