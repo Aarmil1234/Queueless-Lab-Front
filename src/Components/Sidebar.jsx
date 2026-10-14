@@ -6,18 +6,17 @@ import {
   Hospital,
   FileSearch,
   SlidersHorizontal,
-  Ruler,
-  TestTube2,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  ShieldCheck,
+  Building2,
+  Settings,
 } from "lucide-react";
-
-import { apiRequest } from "../reusable";
 
 // Routes that live under the "Settings" dropdown
 const SETTINGS_PATHS = ["/addtests", "/addparam", "/addsubparam", "/addrange"];
 
-const Sidebar = ({ collapsed }) => {
+const Sidebar = ({ collapsed, superAdmin = false }) => {
   const location = useLocation();
   const [hospitalName, setHospitalName] = useState("");
   const [openDropdown, setOpenDropdown] = useState(null);
@@ -34,7 +33,7 @@ useEffect(() => {
     }
   }, [location.pathname]);
 
-  const menuItems = [
+  const labMenuItems = [
     { path: "/", icon: LayoutDashboard, label: "Dashboard" },
     { path: "/reports", icon: FileText, label: "Reports" },
     { path: "/history", icon: FileSearch, label: "Reports History" },
@@ -53,6 +52,13 @@ useEffect(() => {
 
     // { path: "/uriareport", icon: TestTube2, label: "Urine Report" },
   ];
+
+  const superAdminMenuItems = [
+    { path: "/super-admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+    { path: "/super-admin/labs", icon: Building2, label: "Lab Management" },
+    { path: "/super-admin/settings", icon: Settings, label: "Settings" },
+  ];
+  const menuItems = superAdmin ? superAdminMenuItems : labMenuItems;
 
   const sidebarStyle = {
     position: "fixed",
@@ -118,15 +124,15 @@ useEffect(() => {
         <div style={headerStyle}>
           <div style={logoContainerStyle}>
             <div style={logoIconStyle}>
-              <Hospital size={24} />
+              {superAdmin ? <ShieldCheck size={24} /> : <Hospital size={24} />}
             </div>
             {!collapsed && (
               <div>
                 <h3 style={{ fontSize: "1.4rem", fontWeight: "700", margin: 0 }}>
-                  {hospitalName}
+                  {superAdmin ? "Queueless" : hospitalName}
                 </h3>
                 <span style={{ fontSize: "0.85rem", color: "rgba(255,255,255,0.8)" }}>
-                  Admin Panel
+                  {superAdmin ? "Super Admin" : "Admin Panel"}
                 </span>
               </div>
             )}
@@ -236,7 +242,7 @@ useEffect(() => {
 
       {/* Footer */}
       <div style={footerStyle}>
-        {!collapsed && "Handled by Queueless"}
+        {!collapsed && (superAdmin ? "Platform administration" : "Handled by Queueless")}
         {collapsed && (
           <span style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}>
             Queueless

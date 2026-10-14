@@ -9,13 +9,12 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import Appointments from "./Components/Appointment";
 import ClientList from "./Components/ClientLIst";
 import QueuelessRegistrationForm from "./Login/RegistrationForm";
-import Another from "./Another";
 import AddDoctor from "./Components/AddDoctor";
 import Login from "./Login/Login";
 // import ApiCall from "./ApiCall/ApiCall";
 
 const App = () => {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed] = useState(false);
 
   return (
     <Router>

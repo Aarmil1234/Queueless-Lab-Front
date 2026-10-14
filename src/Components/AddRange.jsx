@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import { apiRequest } from "../reusable";
-import { Plus, ArrowLeft, Settings, Pencil, Trash2, ChevronDown, Sliders } from "lucide-react";
+import { Plus, ArrowLeft, Pencil, Trash2, ChevronDown, Sliders } from "lucide-react";
 
 // ─── Inline styles (mirrors your SCSS tokens, no extra file needed) ─────────
 const css = {

@@ -1,6 +1,5 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { apiRequest } from "../reusable";
-import html2pdf from "html2pdf.js";
 
 const ReportHistory = () => {
 
@@ -107,6 +106,8 @@ const ReportHistory = () => {
 
   useEffect(() => {
     fetchReports();
+    // fetchReports uses the three inputs below and is intentionally rerun when any of them changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter, startDate, endDate]);
 
   const fetchReports = async () => {

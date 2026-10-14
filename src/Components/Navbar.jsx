@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { apiRequest, clearSession } from "../reusable";
 
-const Navbar = ({ collapsed }) => {
+const Navbar = ({ collapsed, superAdmin = false }) => {
   const navigate = useNavigate();
 
   const [hospitalName, setHospitalName] = useState("");
@@ -24,6 +24,17 @@ const Navbar = ({ collapsed }) => {
   // =====================================================
 
   useEffect(() => {
+    if (superAdmin) {
+      const readProfile = () => {
+        let superAdminUser = {};
+        try { superAdminUser = JSON.parse(localStorage.getItem("superAdminUser") || "{}"); } catch (_) {}
+        setHospitalName(superAdminUser.email || "Super Admin");
+        setOwnerName(superAdminUser.name || "Super Admin");
+      };
+      readProfile();
+      window.addEventListener("superAdminProfileUpdated", readProfile);
+      return () => window.removeEventListener("superAdminProfileUpdated", readProfile);
+    }
     const name =
       localStorage.getItem("hospitalName");
 
@@ -37,7 +48,7 @@ const Navbar = ({ collapsed }) => {
     setOwnerName(
       owner || "Administrator"
     );
-  }, []);
+  }, [superAdmin]);
 
 
   // =====================================================
@@ -434,6 +445,13 @@ const Navbar = ({ collapsed }) => {
 
       if (willLogout) {
 
+        if (superAdmin) {
+          localStorage.removeItem("superAdminToken");
+          localStorage.removeItem("superAdminUser");
+          navigate("/super-admin/login");
+          return;
+        }
+
         // Clear session + gate cookie
         clearSession();
 
@@ -486,40 +504,6 @@ const Navbar = ({ collapsed }) => {
 
     boxShadow:
       "0 2px 10px rgba(0, 0, 0, 0.05)",
-  };
-
-
-  const logoutBtnStyle = {
-
-    display: "flex",
-
-    alignItems: "center",
-
-    gap: "8px",
-
-    padding:
-      "10px 20px",
-
-    background:
-      "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
-
-    color: "white",
-
-    border: "none",
-
-    borderRadius: "10px",
-
-    cursor: "pointer",
-
-    fontWeight: "600",
-
-    fontSize: "0.9rem",
-
-    transition:
-      "all 0.3s ease",
-
-    boxShadow:
-      "0 4px 12px rgba(239, 68, 68, 0.3)",
   };
 
 
@@ -713,9 +697,7 @@ const Navbar = ({ collapsed }) => {
 
               <button
                 type="button"
-                onClick={
-                  handleUpdatePassword
-                }
+                onClick={superAdmin ? () => { setShowDropdown(false); navigate("/super-admin/settings"); } : handleUpdatePassword}
                 style={{
                   width: "100%",
                   display: "flex",
@@ -753,7 +735,7 @@ const Navbar = ({ collapsed }) => {
                 />
 
                 <span>
-                  Reset Password
+                  {superAdmin ? "Account Settings" : "Reset Password"}
                 </span>
 
               </button>

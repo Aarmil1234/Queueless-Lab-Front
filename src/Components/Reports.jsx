@@ -429,7 +429,6 @@ export default function Reports() {
     try {
 
       setLoading(true);
-      const finalTests = [...selectedTests];
       const payload = {
         patientName: formData.patientName,
         gender: formData.gender,

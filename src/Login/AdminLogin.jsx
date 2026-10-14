@@ -1,92 +1,75 @@
 import React, { useState } from "react";
-import "../Scss/Style.scss";
 import { useNavigate } from "react-router-dom";
+import { LockKeyhole, ArrowLeft } from "lucide-react";
+import axios from "axios";
 
-const AdminLogin = () => {
+const API = axios.create({ baseURL: "https://queueless-lab.onrender.com", timeout: 60000, headers: { "Content-Type": "application/json" } });
+const payloadOf = (response) => response?.data?.data?.data ?? response?.data?.data ?? response?.data;
+
+export { API, payloadOf };
+
+export default function AdminLogin() {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({ email: "", password: "" });
-  const [isLoading, setIsLoading] = useState(false);
+  const [mode, setMode] = useState("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [otp, setOtp] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [name, setName] = useState("Super Admin");
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    setTimeout(() => {
-      if (
-        formData.email === "admin@gmail.com" &&
-        formData.password === "Admin@123"
-      ) {
-        const expires = new Date();
-        expires.setDate(expires.getDate() + 7);
-        document.cookie = `role=admin; expires=${expires.toUTCString()}; path=/`;
-        navigate("/admin-dashboard");
-        window.location.reload();
+  const submit = async (event) => {
+    event.preventDefault(); setBusy(true); setError(""); setNotice("");
+    try {
+      if (mode === "login") {
+        const response = await API.post("/api/super-admin/login", { email, password });
+        const result = payloadOf(response);
+        const token = result?.token || result?.accessToken;
+        if (token) localStorage.setItem("superAdminToken", token);
+        if (result?.user) localStorage.setItem("superAdminUser", JSON.stringify(result.user));
+        navigate("/super-admin/dashboard");
+      } else if (mode === "forgot") {
+        await API.post("/api/super-admin/forgot-password", { name, email, mobileNumber, password });
+        setMode("otp"); setNotice("OTP sent. Check the super admin email or phone for the verification code.");
+      } else if (mode === "otp") {
+        await API.post("/api/super-admin/verify-otp", { email, otp });
+        setMode("reset"); setNotice("Email verified. Choose a new password.");
       } else {
-        alert("Invalid admin credentials");
+        await API.post("/api/super-admin/reset-password", { email, otp, newPassword });
+        setMode("login"); setPassword(""); setOtp(""); setNewPassword(""); setNotice("Password reset. Sign in with your new password.");
       }
-      setIsLoading(false);
-    }, 500);
+    } catch (e) { setError(e?.response?.data?.message || e?.response?.data?.data?.message || "Request failed. Check the details and try again."); }
+    finally { setBusy(false); }
   };
 
-  return (
-    <div className="login-wrapper">
-      <div className="registration-container">
-        <div className="form-card auth-container">
-          <div className="form-header py-3 p-2">
-            <div className="d-flex justify-content-center text-center w-100">
-              <h1 className="brand-title">Queueless</h1>
-            </div>
-            <h2>Admin Sign In</h2>
-          </div>
-
-          <div className="form-body">
-            <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label htmlFor="email" className="form-label">Email Address</label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="form-control border-dark"
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="password" className="form-label">Password</label>
-                <input
-                  type="password"
-                  id="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  className="form-control border-dark"
-                  required
-                />
-              </div>
-
-              <div className="button-group center y">
-                <button
-                  type="submit"
-                  className="btn-custom btn-primary"
-                  disabled={isLoading}
-                >
-                  {isLoading ? "Authenticating..." : "Sign In Securely"}
-                </button>
-              </div>
-            </form>
-          </div>
+  const title = { login: "Super Admin sign in", forgot: "Recover access", otp: "Verify your email", reset: "Set a new password" }[mode];
+  return <main className="login-wrapper">
+    <section className="registration-container auth-container">
+      <div className="form-card">
+        <div className="form-header py-3 p-2 text-center">
+          <h1 className="brand-title">Queueless</h1>
+          <h2>{title}</h2>
+          <p className="mb-0 mt-2">{mode === "login" ? "Manage labs and monitor platform activity." : "Follow the steps to restore your account."}</p>
+        </div>
+        <div className="form-body">
+          <form onSubmit={submit}>
+            {mode === "forgot" && <><div className="form-group mb-3"><label className="form-label">Full name</label><input className="form-control" value={name} onChange={e => setName(e.target.value)} required /></div><div className="form-group mb-3"><label className="form-label">Mobile number</label><input className="form-control" value={mobileNumber} onChange={e => setMobileNumber(e.target.value.replace(/\D/g, ""))} maxLength={10} required /></div></>}
+            {mode !== "login" && <div className="form-group mb-3"><label className="form-label">Email address</label><input className="form-control" type="email" value={email} onChange={e => setEmail(e.target.value)} required /></div>}
+            {mode === "login" && <div className="form-group mb-3"><label className="form-label">Email address</label><input className="form-control" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="admin@queueless.com" required /></div>}
+            {mode === "login" && <div className="form-group mb-3"><label className="form-label">Password</label><input className="form-control" type="password" value={password} onChange={e => setPassword(e.target.value)} required /></div>}
+            {mode === "forgot" && <div className="form-group mb-3"><label className="form-label">Current password</label><input className="form-control" type="password" value={password} onChange={e => setPassword(e.target.value)} required /></div>}
+            {mode === "otp" && <div className="form-group mb-3"><label className="form-label">6 digit OTP</label><input className="form-control" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" maxLength={6} required /></div>}
+            {mode === "reset" && <><div className="form-group mb-3"><label className="form-label">6 digit OTP</label><input className="form-control" value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))} inputMode="numeric" maxLength={6} required /></div><div className="form-group mb-3"><label className="form-label">New password</label><input className="form-control" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} minLength={8} required /></div></>}
+            {error && <div className="alert alert-danger py-2">{error}</div>}{notice && <div className="alert alert-success py-2">{notice}</div>}
+            <button className="btn-custom btn-primary w-100 justify-content-center" disabled={busy}>{busy ? "Please wait…" : mode === "login" ? "Sign in" : mode === "forgot" ? "Send verification code" : mode === "otp" ? "Verify code" : "Reset password"}</button>
+          </form>
+          <div className="text-center mt-3">{mode === "login" ? <button className="btn btn-link" onClick={() => { setMode("forgot"); setError(""); setNotice(""); }}>Forgot password?</button> : <button className="btn btn-link" onClick={() => { setMode("login"); setError(""); setNotice(""); }}><ArrowLeft size={15} /> Back to sign in</button>}</div>
+          <div className="text-center text-muted small border-top pt-3 mt-2"><LockKeyhole size={14} className="me-1" />Authorized administrators only</div>
         </div>
       </div>
-    </div>
-  );
-};
-
-export default AdminLogin;
+    </section>
+  </main>;
+}

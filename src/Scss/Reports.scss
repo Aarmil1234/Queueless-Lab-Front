@@ -947,3 +947,112 @@
 .table-header{
  color: #000 !important;
 }
+
+// Super Admin lab list refinements
+.reports-table.super-admin-labs-table {
+  tbody tr td:first-child {
+    color: #374151;
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+  }
+
+  .super-admin-lab-link {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+    max-width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover .super-admin-lab-name { color: #5968d8; }
+    &:focus-visible { outline: 3px solid rgba(102, 126, 234, .35); outline-offset: 4px; border-radius: 3px; }
+  }
+
+  .super-admin-lab-name {
+    color: #1f2937;
+    font-size: .98rem;
+    font-weight: 700;
+    line-height: 1.35;
+    transition: color .2s ease;
+  }
+
+  .super-admin-lab-email {
+    color: #7b8494;
+    font-size: .8rem;
+    font-weight: 400;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+  }
+
+  .super-admin-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 11px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: .78rem;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+
+    &.is-active { color: #147847; background: #e8f7ef; border-color: #c5ead5; }
+    &.is-inactive { color: #667085; background: #f1f3f5; border-color: #dfe3e8; }
+  }
+
+  .super-admin-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .super-admin-lab-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    .btn-report { padding: 11px 20px; font-size: .92rem; }
+  }
+
+  .super-admin-status-switch {
+    position: relative;
+    width: 48px;
+    height: 28px;
+    flex: 0 0 48px;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background .2s ease, box-shadow .2s ease;
+
+    span {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, .25);
+      transition: transform .2s ease;
+    }
+
+    &.is-active { background: #1c9a60; }
+    &.is-active span { transform: translateX(20px); }
+    &.is-inactive { background: #aab2bd; }
+    &:hover { box-shadow: 0 0 0 4px rgba(102, 126, 234, .13); }
+    &:focus-visible { outline: 3px solid rgba(102, 126, 234, .4); outline-offset: 3px; }
+  }
+}
+
+@media (max-width: 768px) {
+  .reports-table.super-admin-labs-table .super-admin-lab-actions {
+    gap: 7px;
+    .btn-report { padding: 9px 13px; font-size: .82rem; }
+  }
+}

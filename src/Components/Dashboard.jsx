@@ -189,6 +189,8 @@ const Dashboard = () => {
     fetchDoctorWisePatients();
     fetchWeeklyReports();
     fetchCityWiseReports();
+// The fetch helpers intentionally use the current filter, so this effect refreshes only when it changes.
+// eslint-disable-next-line react-hooks/exhaustive-deps
 }, [filter]);
 
   /* ------------------ UI ------------------ */
