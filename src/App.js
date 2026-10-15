@@ -60,7 +60,6 @@ const AppRoutes = () => {
 
   return (
     <div className="admin-panel">
-      {/* ✅ Show Sidebar only if not hidden */}
       {!hideSidebarAndNavbar && <Sidebar collapsed={collapsed} superAdmin={isSuperAdmin} />}
 
       <div className={`main-content ${collapsed ? "collapsed" : ""}`}>

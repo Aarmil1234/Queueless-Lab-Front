@@ -1087,6 +1087,35 @@
   span { color: #6b7280; }
 }
 
+.super-admin-pagination {
+  color: #374151;
+
+  small { color: #374151; font-weight: 600; }
+}
+
+.super-admin-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 11px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: .78rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
+
+  &.is-active { color: #147847; background: #e8f7ef; border-color: #c5ead5; }
+  &.is-inactive { color: #667085; background: #f1f3f5; border-color: #dfe3e8; }
+}
+
+.super-admin-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
 @media (max-width: 768px) {
   .reports-table.super-admin-labs-table .super-admin-lab-actions {
     gap: 7px;
